@@ -99,7 +99,7 @@ timer_sleep (int64_t ticks)
 }
 
 static void
-alarm_clock (void *sema_，int64_t start， int64_t ticks)
+alarm_clock (void *sema_, int64_t start, int64_t ticks)
 {
   struct semaphore *sema = sema_;
   sema_down(&sema);
