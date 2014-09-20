@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include "devices/pit.h"
 #include "threads/interrupt.h"
-#include "threads/synch.h"
 #include "threads/thread.h"
 
 /* See [8254] for hardware details of the 8254 timer chip. */
@@ -19,6 +18,10 @@
 
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
+
+/* List of processes in sleeping state, that is, processes
+   should be be blocked until the wakeup_time of the processes. */
+static struct list sleep_list;
 
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
@@ -37,6 +40,7 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+  list_init (&sleep_list);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -90,23 +94,13 @@ void
 timer_sleep (int64_t ticks)
 {
   int64_t start = timer_ticks ();
-
   ASSERT (intr_get_level () == INTR_ON);
 
-  struct semaphore sema;
-  sema_init (sema, 0) ;
-  thread_create ("alarm", PRI_DEFAULT, alarm_clock, &sema);
-}
-
-static void
-alarm_clock (void *sema_, int64_t start, int64_t ticks)
-{
-  struct semaphore *sema = sema_;
-  sema_down(&sema);
-
-  while (timer_elapsed (start) < ticks) {}
-  if (timer_elapsed (start) == ticks)
-    sema_up(&sema);
+  struct thread *t = thread_current();
+  sema_init (&t->sema, 0) ;
+  t->wakeup_time = start + ticks;
+  list_push_back (&sleep_list, &t->sleep_list_elem);
+  sema_down(&t->sema);
 }
 
 
@@ -184,6 +178,20 @@ timer_print_stats (void)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
+  struct list_elem *e;
+  for (e = list_begin (&sleep_list); e != list_end (&sleep_list);)
+    {
+      struct thread *t = list_entry (e, struct thread, sleep_list_elem);
+      if(timer_ticks() >= t->wakeup_time)
+      {
+        sema_up(&t->sema);
+        e = list_remove(e);
+      }
+      else
+      {
+        e = list_next(e);
+      }
+    }
   ticks++;
   thread_tick ();
 }

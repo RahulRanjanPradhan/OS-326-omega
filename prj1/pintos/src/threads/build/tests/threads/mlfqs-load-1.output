@@ -1,4 +1,4 @@
-qemu -hda /var/folders/yy/znrb4cyx0t17bhbdcdwrh7680000gn/T/Mpi5f7Hwfm.dsk -m 4 -net none -nographic -monitor null
+qemu -hda /var/folders/79/w5sd6wls5f97fzsh77vv0vnc0000gn/T/EZCJ5eDF9u.dsk -m 4 -net none -nographic -monitor null
 PiLo hda1
 Loading........
 Kernel command line: -q -mlfqs run mlfqs-load-1
@@ -12,7 +12,7 @@ Executing 'mlfqs-load-1':
 (mlfqs-load-1) spinning for up to 45 seconds, please wait...
 (mlfqs-load-1) FAIL: load average stayed below 0.5 for more than 45 seconds
 Kernel PANIC at ../../tests/threads/tests.c:93 in fail(): test failed
-Call stack: 0xc0027676 0xc0029224 0xc002ab5a 0xc002926b 0xc002072f 0xc00206b5.
+Call stack: 0xc0027712 0xc00292c0 0xc002abf6 0xc0029307 0xc002072f 0xc00206b5.
 The `backtrace' program can make call stacks useful.
 Read "Backtraces" in the "Debugging Tools" chapter
 of the Pintos documentation for more information.

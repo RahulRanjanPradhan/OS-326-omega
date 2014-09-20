@@ -1,4 +1,4 @@
-qemu -hda /var/folders/yy/znrb4cyx0t17bhbdcdwrh7680000gn/T/QWO31GYdUE.dsk -m 4 -net none -nographic -monitor null
+qemu -hda /var/folders/79/w5sd6wls5f97fzsh77vv0vnc0000gn/T/YeGBQAaRMy.dsk -m 4 -net none -nographic -monitor null
 PiLo hda1
 Loading........
 Kernel command line: -q run alarm-single
@@ -21,8 +21,8 @@ Executing 'alarm-single':
 (alarm-single) thread 4: duration=50, iteration=1, product=50
 (alarm-single) end
 Execution of 'alarm-single' complete.
-Timer: 272 ticks
-Thread: 0 idle ticks, 272 kernel ticks, 0 user ticks
-Console: 986 characters output
+Timer: 273 ticks
+Thread: 251 idle ticks, 22 kernel ticks, 0 user ticks
+Console: 987 characters output
 Keyboard: 0 keys pressed
 Powering off...

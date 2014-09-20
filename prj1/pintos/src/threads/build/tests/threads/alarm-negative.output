@@ -1,4 +1,4 @@
-qemu -hda /var/folders/yy/znrb4cyx0t17bhbdcdwrh7680000gn/T/LDXluQPka9.dsk -m 4 -net none -nographic -monitor null
+qemu -hda /var/folders/79/w5sd6wls5f97fzsh77vv0vnc0000gn/T/9sg7ZXc3X7.dsk -m 4 -net none -nographic -monitor null
 PiLo hda1
 Loading........
 Kernel command line: -q run alarm-negative
@@ -12,8 +12,8 @@ Executing 'alarm-negative':
 (alarm-negative) PASS
 (alarm-negative) end
 Execution of 'alarm-negative' complete.
-Timer: 21 ticks
-Thread: 0 idle ticks, 21 kernel ticks, 0 user ticks
+Timer: 22 ticks
+Thread: 1 idle ticks, 21 kernel ticks, 0 user ticks
 Console: 409 characters output
 Keyboard: 0 keys pressed
 Powering off...
