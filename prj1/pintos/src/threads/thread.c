@@ -64,6 +64,9 @@ static void kernel_thread (thread_func *, void *aux);
 static void idle (void *aux UNUSED);
 static struct thread *running_thread (void);
 static struct thread *next_thread_to_run (void);
+bool compare_thread_priority (const struct list_elem *a,
+                              const struct list_elem *b,
+                              void *aux);
 static void init_thread (struct thread *, const char *name, int priority);
 static bool is_thread (struct thread *) UNUSED;
 static void *alloc_frame (struct thread *, size_t size);
@@ -495,7 +498,21 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
+  {
+    list_sort(&ready_list, compare_thread_priority, NULL);
     return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  }
+}
+
+/* Compare threads by priority. Greater priority would run first. */
+bool compare_thread_priority (const struct list_elem *a,
+                              const struct list_elem *b,
+                              void *aux)
+{
+  struct thread *t1 = list_entry (a, struct thread, elem);
+  struct thread *t2 = list_entry (b, struct thread, elem);
+
+  return t1->priority > t2->priority;
 }
 
 /* Completes a thread switch by activating the new thread's page
