@@ -99,7 +99,7 @@ timer_sleep (int64_t ticks)
   {
     int64_t start = timer_ticks ();
     struct thread *t = thread_current();
-    t->wakeup_time = start + ticks;
+    t->wakeup_time = start + ticks - 1;
     
     list_push_back(&sleep_list, &t->sleep_list_elem);
     sema_down(&t->sema);
