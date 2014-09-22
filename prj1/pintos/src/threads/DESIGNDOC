@@ -1,7 +1,7 @@
                             +-------------------+
-                            |   CS 326                      |
-                            |  PROJECT 1a                |
-                            | DESIGN DOCUMENT    |
+                            |   CS 326          |
+                            |  PROJECT 1a       |
+                            | DESIGN DOCUMENT   |
                             +-------------------+
 
  ---- GROUP ----
@@ -20,11 +20,11 @@ None.
 **** thread.h ****
 
 Added to struct thread:
-    /*Members for implementing timer_sleep(). */
-    struct semaphore sema;                //Semaphore used to lock this thread
-                                                         //when sleep.
-    int64_t wakeup_time;                   //Time that this thread should wake
-                                                        //up.
+    /* Members for implementing timer_sleep(). */
+    struct semaphore sema;              //Semaphore used to lock this thread
+                                        //when sleep.
+    int64_t wakeup_time;                //Time that this thread should wake
+                                        //up.
     struct list_elem sleep_list_elem;   // Element in sleep_list.
 
 
@@ -39,104 +39,20 @@ Add a static member:
 
 ---- ALGORITHMS ----
 
->> Using semaphore to implement new thread_sleep() instead of busy waiting.
->> Each thread has new attribute: semaphore and wakeup_time.
->> When a thread need to sleep, using sema_down, and add the thread to sleeep_list.
->> Timer_interrupt checks the sleep_list by wakeup-time to see if there are threads
->> need to be waken up. If so , using sema_up to wake them up and then
->> add them to ready_list.
+Use semaphore to implement new thread_sleep() instead of busy waiting.
+Each thread has new attribute: semaphore and wakeup_time.
+When a thread need to sleep, 
+call sema_down(), and add the thread to sleeep_list.
+Timer_interrupt checks the sleep_list by wakeup_time to see if there are 
+threads that need to be waken up. If so , use sema_up() to wake them up and 
+then add them to ready_list.
 
-**** timer.c ****
-
-Modify timer_init():
-    void
-    timer_init (void)
-    {
-      pit_configure_channel (0, 2, TIMER_FREQ);
-      intr_register_ext (0x20, timer_interrupt, "8254 Timer");
-      list_init (&sleep_list);
-    }
-
-Modify timer_sleep():
-    void
-    timer_sleep (int64_t ticks)
-    {
-      ASSERT (intr_get_level () == INTR_ON);
-      intr_disable ();
-      if (ticks > 0)
-      {
-        int64_t start = timer_ticks ();
-        struct thread *t = thread_current();
-        t->wakeup_time = start + ticks;
-
-        list_push_back(&sleep_list, &t->sleep_list_elem);
-        sema_down(&t->sema);
-      }
-      intr_enable();
-    }
-
-Modify timer_interrupt():
-    static void
-    timer_interrupt (struct intr_frame *args UNUSED)
-    {
-      ticks++;
-      thread_tick ();
-
-      struct list_elem *e;
-      for (e = list_begin (&sleep_list); e != list_end (&sleep_list);)
-      {
-        struct thread *t = list_entry (e, struct thread, sleep_list_elem);
-        if(timer_ticks() >= t->wakeup_time)
-        {
-          sema_up(&t->sema);
-          e = list_remove(e);
-        }
-        else
-        {
-          e = list_next(e);
-        }
-      }
-    }
-
-
-
->> Using priority schedule instead of round-robin.
->> compare_thread_priority provide a way to compare the priority of
->> two thread. Hence next_thread_to_run can sort the ready_list by priority by
->> compare_thread_priority and return the thread with highest priority.
->> Now when the scheduler picks next thread to run by next_thread_to_run,
->> then it will use the priority schdule.
-
-**** thread.c ****
-
-Added to init_thread()
-    sema_init(&t->sema, 0);             //Initialize semaphore to 0 for
-                                                      //timer_sleep().
-
-Add a function compare_thread_priority():
-    /* Compare threads by priority. Greater priority would run first. */
-    bool compare_thread_priority (const struct list_elem *a,
-                              const struct list_elem *b,
-                              void *aux)
-    {
-      struct thread *t1 = list_entry (a, struct thread, elem);
-      struct thread *t2 = list_entry (b, struct thread, elem);
-      return t1->priority > t2->priority;
-    }
-
-Modify next_thread_to_run():
-    static struct thread *
-    next_thread_to_run (void)
-    {
-      if (list_empty (&ready_list))
-        return idle_thread;
-      else
-      {
-        /* sort ready_list by priority first. */
-        list_sort(&ready_list, compare_thread_priority, NULL);
-        return list_entry (list_pop_front (&ready_list), struct thread, elem);
-      }
-    }
+Using priority schedule instead of round-robin.
+compare_thread_priority provide a way to compare the priority of
+two thread. Hence next_thread_to_run can sort the ready_list by priority by
+compare_thread_priority and return the thread with highest priority.
+Now when the scheduler picks next thread to run by next_thread_to_run,
+then it will use the priority schdule.
 
 
 ---- SYNCHRONIZATION ----
