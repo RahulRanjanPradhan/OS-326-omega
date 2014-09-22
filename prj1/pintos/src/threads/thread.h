@@ -146,5 +146,12 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+/* Compare threads by priority. Greater priority would run first. */
+bool compare_thread_priority (const struct list_elem *,
+                              const struct list_elem *,
+                              void *);
+
+/* Do yield operation in interrupt or non-interrupt condition */
+void thread_super_yield (void);
 
 #endif /* threads/thread.h */

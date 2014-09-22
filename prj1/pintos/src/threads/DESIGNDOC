@@ -41,15 +41,14 @@ Add a static member:
 
 Use semaphore to implement new thread_sleep() instead of busy waiting.
 Each thread has new attribute: semaphore and wakeup_time.
-When a thread need to sleep, 
-call sema_down(), and add the thread to sleeep_list.
-Timer_interrupt checks the sleep_list by wakeup_time to see if there are 
-threads that need to be waken up. If so , use sema_up() to wake them up and 
-then add them to ready_list.
+When a thread need to sleep, call sema_down(), and add the thread to 
+sleep_list. Timer_interrupt checks the sleep_list by wakeup_time to see if 
+there are threads that need to be waken up. If so, use sema_up() to wake them 
+up and then add them to ready_list.
 
-Using priority schedule instead of round-robin.
-compare_thread_priority provide a way to compare the priority of
-two thread. Hence next_thread_to_run can sort the ready_list by priority by
+Use priority schedule instead of round-robin.
+Function compare_thread_priority() provide a way to compare the priority of 
+two threads. Hence next_thread_to_run can sort the ready_list by priority by
 compare_thread_priority and return the thread with highest priority.
 Now when the scheduler picks next thread to run by next_thread_to_run,
 then it will use the priority schdule.

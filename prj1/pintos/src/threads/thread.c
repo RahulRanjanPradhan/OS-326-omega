@@ -64,9 +64,6 @@ static void kernel_thread (thread_func *, void *aux);
 static void idle (void *aux UNUSED);
 static struct thread *running_thread (void);
 static struct thread *next_thread_to_run (void);
-bool compare_thread_priority (const struct list_elem *a,
-                              const struct list_elem *b,
-                              void *aux);
 static void init_thread (struct thread *, const char *name, int priority);
 static bool is_thread (struct thread *) UNUSED;
 static void *alloc_frame (struct thread *, size_t size);
@@ -142,6 +139,7 @@ thread_tick (void)
     intr_yield_on_return ();
 }
 
+
 /* Prints thread statistics. */
 void
 thread_print_stats (void) 
@@ -203,7 +201,7 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-  thread_yield();
+  thread_super_yield();
 
   return tid;
 }
@@ -241,11 +239,12 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_insert_ordered(&ready_list, 
+                      &t->elem, 
+                      compare_thread_priority, 
+                      NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
-  if(intr_context)
-    thread_ticks = TIME_SLICE;
 }
 
 /* Returns the name of the running thread. */
@@ -314,7 +313,10 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered(&ready_list, 
+                      &cur->elem, 
+                      compare_thread_priority, 
+                      NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -342,7 +344,7 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
-  thread_yield();
+  thread_super_yield();
 }
 
 /* Returns the current thread's priority. */
@@ -503,7 +505,6 @@ next_thread_to_run (void)
     return idle_thread;
   else
   {
-    list_sort(&ready_list, compare_thread_priority, NULL);
     return list_entry (list_pop_front (&ready_list), struct thread, elem);
   }
 }
@@ -600,6 +601,30 @@ allocate_tid (void)
   lock_release (&tid_lock);
 
   return tid;
+}
+
+/* Do yield operation in interrupt or non-interrupt condition */
+void 
+thread_super_yield (void)
+{
+  if(list_empty(&ready_list))
+    return;
+  struct thread *t = list_entry(list_front(&ready_list),
+                                struct thread, elem);
+  if (!intr_context())
+  {
+    if (thread_current()->priority < t->priority)
+    {
+      thread_yield();
+    }
+  }
+  else if ( thread_current()->priority < t->priority ||
+            (thread_ticks >= TIME_SLICE &&
+              thread_current()->priority == t->priority) )
+  {
+    thread_ticks = TIME_SLICE;
+  }
+
 }
 
 /* Offset of `stack' member within `struct thread'.
