@@ -133,10 +133,16 @@ thread_tick (void)
 #endif
   else
     kernel_ticks++;
-
+  struct thread *t2 = list_entry(list_front(&ready_list),
+                                struct thread, elem);
   /* Enforce preemption. */
-  if (++thread_ticks >= TIME_SLICE)
-    intr_yield_on_return ();
+  if (++thread_ticks >= TIME_SLICE )
+  {
+    if(t->priority == t2->priority)
+      intr_yield_on_return ();
+    else
+      thread_ticks = 0;
+  }
 }
 
 
@@ -618,9 +624,7 @@ thread_super_yield (void)
       thread_yield();
     }
   }
-  else if ( thread_current()->priority < t->priority ||
-            (thread_ticks >= TIME_SLICE &&
-              thread_current()->priority == t->priority) )
+  else if ( thread_current()->priority < t->priority)
   {
     intr_yield_on_return ();
   }
