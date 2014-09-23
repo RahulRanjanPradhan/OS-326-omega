@@ -622,7 +622,7 @@ thread_super_yield (void)
             (thread_ticks >= TIME_SLICE &&
               thread_current()->priority == t->priority) )
   {
-    thread_ticks = TIME_SLICE;
+    intr_yield_on_return ();
   }
 
 }
