@@ -617,12 +617,20 @@ allocate_tid (void)
 void 
 thread_super_yield (void)
 {
+
+  enum intr_level old_level;
+  old_level = intr_disable ();
+  
   if(list_empty(&ready_list))
+  {
+    intr_set_level (old_level);
     return;
+  }
   else
   {
    struct thread *t = list_entry(list_front(&ready_list),
                                   struct thread, elem);
+   intr_set_level (old_level);
     if (!intr_context())
     {
       if (thread_current()->priority < t->priority)
