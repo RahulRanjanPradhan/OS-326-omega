@@ -27,14 +27,14 @@ Added to struct thread:
                                         //up.
     struct list_elem sleep_list_elem;   // Element in sleep_list.
 
-Added method to help insert thread to ready_list:
+Add a function to help insert thread to ready_list in order:
     /* Compare threads by priority so that can insert
     thread by priority.Greater priority would run first. */
     bool compare_thread_priority (const struct list_elem *,
                                 const struct list_elem *,
                                 void *);
 
-Added method to call scheduler:
+Add a function to call scheduler :
     /* Do yield operation in interrupt or non-interrupt condition */
     void thread_super_yield (void);
 
@@ -48,7 +48,7 @@ Add a static member:
 
 **** synch.h ****
 
-Add a method to help insert thread to waiters:
+Add a function to help insert thread to waiters:
     /* Compare elem by priority. Greater priority would run first. */
     bool compare_thread_priority_in_sema (const struct list_elem *,
                                           const struct list_elem *,
@@ -58,11 +58,11 @@ Add a method to help insert thread to waiters:
 
 **** Alarm clock ****
 
-Use semaphore to implement new thread_sleep() instead of busy waiting.
-Each thread has new attribute: semaphore and wakeup_time.
-When a thread need to sleep, call sema_down(), and add the thread to
-sleep_list. The new implement timer_interrupt checks the sleep_list by
-wakeup_time to see if there are threads that need to be waken up.
+Use semaphore to implement new thread_sleep() instead of possible busy 
+waiting. Each thread has two new attributes: semaphore and wakeup_time.
+When a thread needs to sleep, call sema_down(), and add the thread to
+sleep_list. The new timer_interrupt checks the sleep_list by
+wakeup_time to see if there are threads that need to be woken up.
 If so, use sema_up() to wake them up and then add them to ready_list.
 
 
@@ -75,56 +75,66 @@ When a thread is added to the ready_list:
 2. wake up a sleep thread
 3. unblock a thread
 4. yield the CPU
-use compare_thread_priority to keep all the threads in ready_list is listing
+Use compare_thread_priority to keep all the threads in ready_list is listing
 by decreasing priority.
 
 Create a new method: thread_super_yield to call scheduler whether it is in
 interrupt or not so that when a thread is added to the ready list that has a
-higher priority than the current running thread, immediately yield the
-processor to the new thread.
+higher priority than the current running thread, yield the processor 
+immediately to the new thread.
 
 Change the method thread_ticks to handle the case
-1. When the first thread's priority in ready_list less or equal than current
+1. When the first thread's priority in ready_list is equal to current
 thread's: use round_robin.
-2. When the first thread's priority in ready_list equal to current
-thread's: make the time_ticks to 0, so the scheduler will check again later.
+2. When the first thread's priority in ready_list is less than current
+thread's: make the thread_ticks to 0, so the scheduler will check 
+#(TIME_SLICE) ticks later.
 
 Also, when we use semaphore to block a thread, we make the insertion in the
-order of decreasing priority to the list named waiter. It's the same for use
-a semaphore to block another semaphore, which the later one blocks a thread.
-So we modified sema_up and cond_wait, then when threads are waiting for a lock,
-semaphore or a condition variable, the highest priority waiting thread will be
-woken up first.
+order of decreasing priority to the list named waiter. We modified sema_up 
+and cond_wait, then when threads are waiting for semaphore or condition 
+variable, the highest priority waiting thread will always be woken up first.
 
 
 ---- SYNCHRONIZATION ----
 
-Each thread has a semaphore which is initialized with the value of 0. When the
-thread need to sleep, using sema_down to block the thread, the value of
-semaphore hence decrease to -1 and no other thread can enter the semaphore
-until wakeup_time. So it will guarantee the thread sleeps for enough time.
-At that time, timer_interrupt will find the thread, and it will using
-sema_up to unblock it.
-
-
+Two synchronization ways:
+1. Synchronous  : Every #(TIME_SLICE) ticks, timer_interrupt() will check if
+                 there are threads need to be woken up.  And also do 
+                 round-robin between the same priority thread.
+2. Asynchronous : Whenever there is a potential higher priority thread added
+                 to the ready_list, we will call thread_super_yield() to make
+                 sure that the highest thread is in running state.
 
 
 ---- RATIONALE ----
 
 **** Alarm clock ****
 
-The advantage of our design about is that the timer_sleep can guarantee the thread
-sleep for enough time using semaphore and wakeup-time.
-And the scheduler will not pick the thread that should in sleep.
+The advantage of our design is that the timer_sleep can guarantee the 
+thread to sleep for the expected time using semaphore and wakeup-time.
+And the scheduler will not pick the thread that should be in sleep state.
 And unlike lock, semaphore can access by others, so that timer_interrupt
-can wake the thread up after it had slept enough time.
+can go through the sleep_list and wake the thread up after it had slept 
+enough time.
 
 On the other hand, the design is wasteful because each thread need to have
-a semaphore. Actually, we think about use one semaphore to implement the
-same function, but it will need to modified sema_down in synch.c, so we change
-our design.
+a semaphore. Actually, we think about using one semaphore to implement the
+same function, but it will need to modified sema_down in synch.c, so we 
+changed our design.
 
 **** Priority scheduler ****
+
+Advantage: Enable priority scheduler that highest priority thread will be 
+always in running state. If there are several highest priority threads, they 
+will be scheduled in round-robin strategy. Highest priority thread will be 
+the first one in every list(i.e. ready list, waiting list, sleep list). 
+At first we compare the priority of the first one with current thread. If
+the condition isn't matched, we don't call schedule() at all. With the new
+function thread_super_yield(), we can handle in-interrupt and out-interrupt 
+situations if a new thread comes.
+
+Disadvantage: Not found yet.
 
 
 
