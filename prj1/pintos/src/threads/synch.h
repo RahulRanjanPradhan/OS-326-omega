@@ -43,10 +43,12 @@ void cond_wait (struct condition *, struct lock *);
 /* Compare elem by priority. Greater priority would run first. */
 bool compare_thread_priority_in_sema (const struct list_elem *,
                                       const struct list_elem *,
-                                      int *);
+                                      void *);
 
 void cond_signal (struct condition *, struct lock *);
 void cond_broadcast (struct condition *, struct lock *);
+
+
 
 /* Optimization barrier.
 

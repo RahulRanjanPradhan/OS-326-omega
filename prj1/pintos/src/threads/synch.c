@@ -113,10 +113,9 @@ sema_try_down (struct semaphore *sema)
 void
 sema_up (struct semaphore *sema) 
 {
-  enum intr_level old_level;
+  enum intr_level old_level = intr_disable ();
   ASSERT (sema != NULL);
 
-  old_level = intr_disable ();
   if (!list_empty (&sema->waiters)) 
   {
     thread_unblock (list_entry (list_pop_front (&sema->waiters),
@@ -203,9 +202,19 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
+  // enum intr_level old_level = intr_disable ();
+  if(lock->holder != NULL && !thread_mlfqs)
+    donation(lock);
+
   sema_down (&lock->semaphore);
+
+
   lock->holder = thread_current ();
+  // intr_set_level(old_level);
 }
+
+
+
 
 /* Tries to acquires LOCK and returns true if successful or false
    on failure.  The lock must not already be held by the current
@@ -239,8 +248,19 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
 
   lock->holder = NULL;
+
+  // enum intr_level old_level = intr_disable ();
+  if(!list_empty(&thread_current()->donation_list)
+      && !list_empty(&lock->semaphore.waiters)
+      && !thread_mlfqs)
+    donation_back(lock);
   sema_up (&lock->semaphore);
+  // intr_set_level (old_level);
+
 }
+
+
+
 
 /* Returns true if the current thread holds LOCK, false
    otherwise.  (Note that testing whether some other thread holds
@@ -319,13 +339,14 @@ cond_wait (struct condition *cond, struct lock *lock)
   b is the elem in semaphore_elem in cond->waters. */
 bool compare_thread_priority_in_sema (const struct list_elem *a,
                                       const struct list_elem *b,
-                                      int *aux)
+                                      void *priority_)
 {
+  int *priority = priority_;
   struct semaphore_elem *s = list_entry (b, struct semaphore_elem, elem);
   struct thread *t = list_entry( list_front(&(s->semaphore.waiters)),
                                   struct thread,
                                   elem);
-  return *aux > t->priority;
+  return *priority > t->priority;
 }
 
 /* If any threads are waiting on COND (protected by LOCK), then
@@ -363,3 +384,4 @@ cond_broadcast (struct condition *cond, struct lock *lock)
   while (!list_empty (&cond->waiters))
     cond_signal (cond, lock);
 }
+

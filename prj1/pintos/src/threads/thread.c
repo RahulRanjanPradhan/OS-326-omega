@@ -92,6 +92,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+    
   
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -353,7 +354,18 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  struct thread *t = thread_current ();
+  if(!list_empty(&t->donation_list))
+  {
+    if (new_priority > t->priority)
+    {
+      t->priority = new_priority;
+    }
+    else
+      t->ori_priority = new_priority;
+  }
+  else
+    t->priority = new_priority;
   thread_super_yield();
 }
 
@@ -482,6 +494,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  list_init (&t->donation_list);
+
+
   /* init semaphore for sleep to 0 */
   sema_init(&t->sema, 0) ;
 
@@ -519,16 +534,6 @@ next_thread_to_run (void)
   }
 }
 
-/* Compare threads by priority. Greater priority would run first. */
-bool compare_thread_priority (const struct list_elem *a,
-                              const struct list_elem *b,
-                              void *aux)
-{
-  struct thread *t1 = list_entry (a, struct thread, elem);
-  struct thread *t2 = list_entry (b, struct thread, elem);
-
-  return t1->priority > t2->priority;
-}
 
 /* Completes a thread switch by activating the new thread's page
    tables, and, if the previous thread is dying, destroying it.
@@ -613,6 +618,17 @@ allocate_tid (void)
   return tid;
 }
 
+/* Compare threads by priority. Greater priority would run first. */
+bool compare_thread_priority (const struct list_elem *a,
+                              const struct list_elem *b,
+                              void *aux)
+{
+  struct thread *t1 = list_entry (a, struct thread, elem);
+  struct thread *t2 = list_entry (b, struct thread, elem);
+
+  return t1->priority > t2->priority;
+}
+
 /* Do yield operation in interrupt or non-interrupt condition */
 void 
 thread_super_yield (void)
@@ -633,17 +649,84 @@ thread_super_yield (void)
    intr_set_level (old_level);
     if (!intr_context())
     {
-      if (thread_current()->priority < t->priority)
+      if (thread_current()->priority <= t->priority)
       {
         thread_yield();
       }
     }
-    else if ( thread_current()->priority < t->priority)
+    else if ( thread_current()->priority <= t->priority)
     {
       intr_yield_on_return ();
     } 
   }
-    
+}
+
+/* priority donation */
+void
+donation (struct lock *lock)
+{
+  struct thread *t = thread_current();
+  struct thread *donated_t = lock->holder;
+
+  /* Record donation information. */
+  if(list_empty(&donated_t->donation_list))
+  {
+    donated_t->ori_priority = donated_t->priority;
+  }
+  t->lock_donator = lock;
+  list_push_front(&donated_t->donation_list, &t->donation_elem);
+  
+  /* Ready to donate. */
+  donated_t->priority = t->priority;
+  list_sort(&ready_list, compare_thread_priority, NULL);
+  // list_remove(&donated_t->elem);
+  // list_insert_ordered(&ready_list, 
+  //                     &donated_t->elem, 
+  //                     compare_thread_priority, 
+  //                     NULL);
+}
+
+/* Restore the priority of thread. */ 
+void
+donation_back(struct lock *lock)
+{
+  struct thread *t = thread_current();
+  struct list_elem *e;
+  struct thread *iterator;
+
+  /* Delete the donation info on this lock. */ 
+  for (e = list_begin (&t->donation_list);
+       e != list_end (&t->donation_list);
+       )
+  {
+    // printf("*******  delete donation  ********\n");
+    iterator = list_entry (e, struct thread, donation_elem);
+    /* Donation_list records how this thread is donated. */
+    if(iterator->lock_donator == lock)
+    {
+      // printf("*******  find donation  ********\n");
+      /* Remove this donation. */
+      e = list_remove(e);
+      iterator->lock_donator = NULL;
+    }
+    else
+      e = list_next (e);
+  }
+
+  /* Undo donation. */
+  if(!list_empty(&t->donation_list))
+  {
+    struct thread *first = list_entry(list_front(&t->donation_list),
+                                      struct thread, 
+                                      donation_elem);
+    t->priority = first->priority;
+  
+  }
+  else
+  {
+    t->priority = t->ori_priority;
+  }
+  list_sort(&ready_list, compare_thread_priority, NULL);
 
 }
 

@@ -93,11 +93,19 @@ struct thread
     struct list_elem allelem;           /* List element for all threads list. */
     struct semaphore sema;              /* Semaphore used to lock this thread 
                                            when sleep */
-    int64_t wakeup_time;                /* Time that this thread should wake up. */
+    int64_t wakeup_time;                /* Time that this thread should 
+                                            wake up. */
+
+
+    struct list donation_list;          /* Record donation information. */
+    int ori_priority;                   /* Record original priority before 
+                                            donation. */
+    struct list_elem donation_elem;      /* Element in donation_list. */
+    struct lock *lock_donator;           /* This thread donated in this lock. */
 
 
     /* Shared between thread.c and synch.c. */
-    struct list_elem elem;              /* List element. */
+    struct list_elem elem;              /* List element for ready_list. */
 
     /* Shared between thread.c and timer.c. */
     struct list_elem sleep_list_elem;   /* Element in sleep_list. */
@@ -115,6 +123,7 @@ struct thread
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
+
 
 void thread_init (void);
 void thread_start (void);
@@ -153,5 +162,11 @@ bool compare_thread_priority (const struct list_elem *,
 
 /* Do yield operation in interrupt or non-interrupt condition */
 void thread_super_yield (void);
+
+/* do donation. */
+void donation (struct lock *);
+/* Restore the donated thread. */
+void donation_back (struct lock *);  
+
 
 #endif /* threads/thread.h */
