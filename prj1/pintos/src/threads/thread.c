@@ -115,6 +115,7 @@ thread_init (void)
   list_init (&ready_list);
   list_init (&all_list);
   calc_ticks = 0;
+  load_avg = 0;
   
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -464,9 +465,7 @@ thread_get_nice (void)
   return thread_current ()->nice;
 }
 
-/* Returns 100 times the system load average. 
-    
-*/
+/* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
@@ -823,13 +822,14 @@ void
 calc_load_avg()
 {
   int ready_threads;
-  fixed_point f1 = fp_time_int(fp_divideby_fp(int_to_fp(59), 60), load_avg);
+  fixed_point f1 = fp_time_fp(fp_divideby_int(int_to_fp(59), 60), load_avg);
   if(thread_current() != idle_thread)
     ready_threads = list_size(&ready_list) + 1;
   else
     ready_threads = 0;
-  fixed_point f2 = fp_time_fp(fp_divideby_int(int_to_fp(1), 60), ready_threads);
-  load_avg = fp_to_int_rtn(fp_add_fp(f1, f2));
+  fixed_point f2 = fp_time_int(fp_divideby_int(int_to_fp(1), 60), 
+                              ready_threads);
+  load_avg = fp_add_fp(f1, f2);
 }
 
 
