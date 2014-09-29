@@ -5,11 +5,13 @@
 #include <stdint.h>
 
 /* 	Do Fixed-point Real Arithmetic 
+		p.q  17.14 fixed-point number representation
+		1 sign bit
     x and y are fixed-point numbers , n is an integer. */
 
 
 typedef int fixed_point;
-#define f 1<<14
+#define f 16384		//1<<14
 
 
 
@@ -42,9 +44,9 @@ int fp_to_int_rtz(fixed_point x)
 int fp_to_int_rtn(fixed_point x)
 {
 	if(x >= 0)
-		return ((x) + (f/2));
+		return ((x) + (f/2))/f;
 	else
-		return ((x) + (f/2));
+		return ((x) - (f/2))/f;
 };
 
 /* Add x and y. */

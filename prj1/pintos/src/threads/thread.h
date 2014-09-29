@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/synch.h"
+#include "threads/fixed-point.h"
 
 
 /* States in a thread's life cycle. */
@@ -104,7 +105,7 @@ struct thread
 
     int nice;                           /* Affect priority for multiple level 
                                            feedback queue scheduler. */
-    int recent_cpu;                     /* Measure how much CPU time each 
+    fixed_point recent_cpu;             /* Measure how much CPU time each 
                                            process has received "recently". */
 
     /* Shared between thread.c and synch.c. */
@@ -173,6 +174,6 @@ void donation (struct lock *);
 /* Restore the donated thread. */
 void donation_back (struct lock *);  
 
-
-
+void calc_recent_cpu(struct thread *);
+void calc_load_avg(void);
 #endif /* threads/thread.h */

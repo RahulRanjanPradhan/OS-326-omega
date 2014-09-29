@@ -10,7 +10,7 @@
 #include "threads/palloc.h"
 #include "threads/switch.h"
 #include "threads/vaddr.h"
-#include "threads/fixed-point.h"
+#include "devices/timer.h"
 
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -30,6 +30,9 @@
 
 /* Max depth to donate priority. */
 #define MAX_DEPTH 8
+
+#define NICE_MAX 20
+#define NICE_MIN -20
 
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
@@ -66,7 +69,10 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
-static int load_avg;            /* System load average, estimate the average
+static unsigned calc_ticks;     /* # of timer ticks since last calculate
+                                  priority in mlfqs. */
+
+static fixed_point load_avg;    /* System load average, estimate the average
                                   number of threads ready to run over the past
                                   minute. */
 
@@ -108,7 +114,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-    
+  calc_ticks = 0;
   
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -146,6 +152,10 @@ thread_tick (void)
   /* Update statistics. */
   if (t == idle_thread)
     idle_ticks++;
+  else if(thread_mlfqs)
+    fp_add_int(t->recent_cpu, 1);    /* Recent_cpu is incremented by 1 
+                                        for the running thread only. */
+
 #ifdef USERPROG
   else if (t->pagedir != NULL)
     user_ticks++;
@@ -153,6 +163,37 @@ thread_tick (void)
   else
     kernel_ticks++;
   
+  if(thread_mlfqs)
+  {
+    /*  Every 4th clock tick recalculate priority for every thread. */
+    if (++calc_ticks >= TIME_SLICE )
+    {
+      struct list_elem *e;
+      for (e = list_begin (&all_list); e != list_end (&all_list);
+           e = list_next (e))
+      {
+        struct thread *t = list_entry (e, struct thread, allelem);
+        t->priority = PRI_MAX
+                      - fp_to_int_rtn(fp_divideby_int(t->recent_cpu, 4))
+                      - (t->nice*2);
+      }
+      calc_ticks = 0;
+    }
+
+    /* when timer_ticks() % TIMER_FREQ == 0, update recent_cpu and load_avg. */
+    if(timer_ticks() % TIMER_FREQ == 0)
+    {
+      struct list_elem *e;
+      for (e = list_begin (&all_list); e != list_end (&all_list);
+           e = list_next (e))
+      {
+        struct thread *t = list_entry (e, struct thread, allelem);
+        calc_recent_cpu(t);
+      }
+      calc_load_avg();
+    }
+  }
+
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE )
   {
@@ -166,6 +207,7 @@ thread_tick (void)
     else
       thread_ticks = 0;
   }
+
 }
 
 
@@ -211,9 +253,8 @@ thread_create (const char *name, int priority,
 
   /* Initialize thread. */
   init_thread (t, name, priority);
-  t->nice = thread_get_nice();
-  //t->recent_cpu = thread_current()->recent_cpu;  //TODO
-  t->recent_cpu = thread_get_recent_cpu();
+  t->nice = thread_current()->nice;
+  t->recent_cpu = thread_current()->recent_cpu;
   tid = t->tid = allocate_tid ();
 
   /* Stack frame for kernel_thread(). */
@@ -409,10 +450,10 @@ thread_get_priority (void)
 void
 thread_set_nice (int nice) 
 {
-  if(nice > 20)
-    nice = 20;
-  if(nice < -20)
-    nice = -20;
+  if(nice > NICE_MAX)
+    nice = NICE_MAX;
+  if(nice < NICE_MIN)
+    nice = NICE_MIN;
   thread_current ()->nice = nice;
 }
 
@@ -424,34 +465,19 @@ thread_get_nice (void)
 }
 
 /* Returns 100 times the system load average. 
-    load_avg = (59/60)*load_avg + (1/60)*ready_threads
+    
 */
 int
 thread_get_load_avg (void) 
 {
-  int ready_threads;
-  fixed_point f1 = fp_time_int(fp_divideby_int(int_to_fp(59), 60), load_avg);
-  if(thread_name()!= "idle")
-    ready_threads = list_size(&ready_list) + 1;
-  else
-    ready_threads = 0;
-  fixed_point f2 = fp_time_fp(fp_divideby_int(int_to_fp(1), 60), ready_threads);
-  return fp_to_int_rtn(fp_add_fp(f1, f2));
+  return fp_to_int_rtn(fp_time_int(load_avg, 100));
 }
 
-/* Returns 100 times the current thread's recent_cpu value. 
-    recent_cpu = (2*load_avg)/(2*load_avg + 1)*recent_cpu + nice
-*/
+/* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  int recent_cpu = thread_current()->recent_cpu;
-  fixed_point coef = fp_divideby_fp(fp_time_int(int_to_fp(load_avg), 2),
-                            fp_add_int(fp_time_int(int_to_fp(load_avg), 2), 1));
-  recent_cpu = fp_to_int_rtn( 
-          fp_add_int(fp_time_int(coef, recent_cpu), thread_get_nice()) );
-
-  return recent_cpu;
+  return fp_to_int_rtn(fp_time_int(thread_current()->recent_cpu, 100));
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -578,6 +604,8 @@ next_thread_to_run (void)
     return idle_thread;
   else
   {
+    if(thread_mlfqs)
+      list_sort(&ready_list, compare_thread_priority, NULL);
     return list_entry (list_pop_front (&ready_list), struct thread, elem);
   }
 }
@@ -779,6 +807,30 @@ donation_back(struct lock *lock)
 
 }
 
+/* recent_cpu = (2*load_avg)/(2*load_avg + 1)*recent_cpu + nice */
+void
+calc_recent_cpu(struct thread *t)
+{
+  fixed_point recent_cpu = t->recent_cpu;
+  fixed_point coef = fp_divideby_fp(fp_time_int(load_avg, 2),
+                            fp_add_int(fp_time_int(load_avg, 2), 1));
+  recent_cpu = fp_add_int(fp_time_fp(coef, recent_cpu), t->nice);
+  t->recent_cpu = recent_cpu;
+}
+
+/* load_avg = (59/60)*load_avg + (1/60)*ready_threads */
+void
+calc_load_avg()
+{
+  int ready_threads;
+  fixed_point f1 = fp_time_int(fp_divideby_fp(int_to_fp(59), 60), load_avg);
+  if(thread_current() != idle_thread)
+    ready_threads = list_size(&ready_list) + 1;
+  else
+    ready_threads = 0;
+  fixed_point f2 = fp_time_fp(fp_divideby_int(int_to_fp(1), 60), ready_threads);
+  load_avg = fp_to_int_rtn(fp_add_fp(f1, f2));
+}
 
 
 /* Offset of `stack' member within `struct thread'.
