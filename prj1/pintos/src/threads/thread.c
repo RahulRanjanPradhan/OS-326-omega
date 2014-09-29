@@ -10,9 +10,18 @@
 #include "threads/palloc.h"
 #include "threads/switch.h"
 #include "threads/vaddr.h"
+#include "threads/fixed-point.h"
+
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
+
+/*  Modified by Wei Fang, Yi Xu, Jie Gao 
+    Updated Date: 9/28/2014
+    Email: lancefangw@gmail.com
+    Pass 27/27 tests
+*/
+
 
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
@@ -57,6 +66,9 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
+static int load_avg;            /* System load average, estimate the average
+                                  number of threads ready to run over the past
+                                  minute. */
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -101,6 +113,8 @@ thread_init (void)
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
+  initial_thread->nice = 0;
+  initial_thread->recent_cpu = 0;
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
 }
@@ -197,6 +211,9 @@ thread_create (const char *name, int priority,
 
   /* Initialize thread. */
   init_thread (t, name, priority);
+  t->nice = thread_get_nice();
+  //t->recent_cpu = thread_current()->recent_cpu;  //TODO
+  t->recent_cpu = thread_get_recent_cpu();
   tid = t->tid = allocate_tid ();
 
   /* Stack frame for kernel_thread(). */
@@ -358,19 +375,27 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  struct thread *t = thread_current ();
-  if(!list_empty(&t->donation_list))
+  if(thread_mlfqs)
   {
-    if (new_priority > t->priority)
-    {
-      t->priority = new_priority;
-    }
-    else
-      t->ori_priority = new_priority;
+    return;
   }
   else
-    t->priority = new_priority;
-  thread_super_yield();
+  {
+    struct thread *t = thread_current ();
+    if(!list_empty(&t->donation_list))
+    {
+      if (new_priority > t->priority)
+      {
+        t->priority = new_priority;
+      }
+      else
+        t->ori_priority = new_priority;
+    }
+    else
+      t->priority = new_priority;
+    thread_super_yield();    
+  }
+  
 }
 
 /* Returns the current thread's priority. */
@@ -382,33 +407,51 @@ thread_get_priority (void)
 
 /* Sets the current thread's nice value to NICE. */
 void
-thread_set_nice (int nice UNUSED) 
+thread_set_nice (int nice) 
 {
-  /* Not yet implemented. */
+  if(nice > 20)
+    nice = 20;
+  if(nice < -20)
+    nice = -20;
+  thread_current ()->nice = nice;
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current ()->nice;
 }
 
-/* Returns 100 times the system load average. */
+/* Returns 100 times the system load average. 
+    load_avg = (59/60)*load_avg + (1/60)*ready_threads
+*/
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  int ready_threads;
+  fixed_point f1 = fp_time_int(fp_divideby_int(int_to_fp(59), 60), load_avg);
+  if(thread_name()!= "idle")
+    ready_threads = list_size(&ready_list) + 1;
+  else
+    ready_threads = 0;
+  fixed_point f2 = fp_time_fp(fp_divideby_int(int_to_fp(1), 60), ready_threads);
+  return fp_to_int_rtn(fp_add_fp(f1, f2));
 }
 
-/* Returns 100 times the current thread's recent_cpu value. */
+/* Returns 100 times the current thread's recent_cpu value. 
+    recent_cpu = (2*load_avg)/(2*load_avg + 1)*recent_cpu + nice
+*/
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  int recent_cpu = thread_current()->recent_cpu;
+  fixed_point coef = fp_divideby_fp(fp_time_int(int_to_fp(load_avg), 2),
+                            fp_add_int(fp_time_int(int_to_fp(load_avg), 2), 1));
+  recent_cpu = fp_to_int_rtn( 
+          fp_add_int(fp_time_int(coef, recent_cpu), thread_get_nice()) );
+
+  return recent_cpu;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -654,12 +697,12 @@ thread_super_yield (void)
     intr_set_level (old_level);
     if (!intr_context())
     {
-      if (thread_current()->priority <= t->priority)
+      if (thread_current()->priority < t->priority)
       {
         thread_yield();
       }
     }
-    else if ( thread_current()->priority <= t->priority)
+    else if ( thread_current()->priority < t->priority)
     {
       intr_yield_on_return ();
     }

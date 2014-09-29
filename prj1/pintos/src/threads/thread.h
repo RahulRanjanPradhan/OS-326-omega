@@ -100,15 +100,20 @@ struct thread
     struct list donation_list;          /* Donation information. */
     int ori_priority;                   /* Original priority before 
                                             donation. */
-    struct list_elem donation_elem;     /* Element in donation_list. */
     struct lock *wait_lock;             /* The thread is waiting for the lock */
 
+    int nice;                           /* Affect priority for multiple level 
+                                           feedback queue scheduler. */
+    int recent_cpu;                     /* Measure how much CPU time each 
+                                           process has received "recently". */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element for ready_list. */
 
     /* Shared between thread.c and timer.c. */
     struct list_elem sleep_list_elem;   /* Element in sleep_list. */
+
+    struct list_elem donation_elem;     /* Element in donation_list. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
