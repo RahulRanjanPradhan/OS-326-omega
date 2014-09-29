@@ -11,7 +11,7 @@
 
 
 typedef int fixed_point;
-#define f 16384		//1<<14
+#define F 16384		//1<<14
 
 
 
@@ -31,22 +31,22 @@ fixed_point fp_divideby_int(fixed_point x, int n);
 /* Convert n to fixed point. */
 fixed_point int_to_fp(int n)
 {
-	return n * f;
+	return n * F;
 };
 
 /* Convert x to integer (rounding toward zero). */
 int fp_to_int_rtz(fixed_point x)
 {
-	return x / f;
+	return x / F;
 };
 
 /* Convert x to integer (rounding to nearest). */
 int fp_to_int_rtn(fixed_point x)
 {
 	if(x >= 0)
-		return ((x) + (f/2))/f;
+		return ((x) + (F/2))/F;
 	else
-		return ((x) - (f/2))/f;
+		return ((x) - (F/2))/F;
 };
 
 /* Add x and y. */
@@ -64,19 +64,19 @@ fixed_point fp_minus_fp(fixed_point x, fixed_point y)
 /* Add x and n.*/
 fixed_point fp_add_int(fixed_point x, int n)
 {
-	return ((x) + (n)*(f));
+	return ((x) + (n)*(F));
 };
 
 /* Subtract n from x.*/
 fixed_point fp_minus_int(fixed_point x, int n)
 {
-	return ((x) - (n*f));
+	return ((x) - (n*F));
 };
 
 /* Multiply x by y.*/
 fixed_point fp_time_fp(fixed_point x, fixed_point y)
 {
-	return ((int64_t)x) * y / f;
+	return ((int64_t)x) * y / F;
 };
 
 /* Multiply x by n.*/
@@ -88,7 +88,7 @@ fixed_point fp_time_int(fixed_point x, int n)
 /* Divide x by y.*/
 fixed_point fp_divideby_fp(fixed_point x, fixed_point y)
 {
-	return ((int64_t)x) * f / y;
+	return ((int64_t)x) * F / y;
 };
 
 /* Divide x by n.*/
