@@ -57,6 +57,8 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
+static bool block_yield = false;
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -648,20 +650,31 @@ thread_super_yield (void)
   }
   else
   {
-   struct thread *t = list_entry(list_front(&ready_list),
+    struct thread *t = list_entry(list_front(&ready_list),
                                   struct thread, elem);
-   intr_set_level (old_level);
-    if (!intr_context())
+    
+    if(block_yield)
     {
-      if (thread_current()->priority <= t->priority)
+      block_yield = false;
+      thread_block();
+      intr_set_level(old_level);
+    }
+    else
+    {
+      intr_set_level (old_level);
+      if (!intr_context())
       {
-        thread_yield();
+        if (thread_current()->priority <= t->priority)
+        {
+          thread_yield();
+        }
+      }
+      else if ( thread_current()->priority <= t->priority)
+      {
+        intr_yield_on_return ();
       }
     }
-    else if ( thread_current()->priority <= t->priority)
-    {
-      intr_yield_on_return ();
-    } 
+    
   }
 }
 
@@ -689,11 +702,11 @@ donation (struct lock *lock)
     donated_t = donated_t->wait_lock->holder;
     donated_t->priority = t->priority;
   }
-  // if (donated_t->status == THREAD_BLOCKED)
-  // {
-  //   thread_unblock(donated_t);
-  //   ori_status = THREAD_BLOCKED;
-  // }
+  if (donated_t->status == THREAD_BLOCKED)
+  {
+    thread_unblock(donated_t);
+    donated_t->ori_status = THREAD_BLOCKED;
+  }
   list_sort(&ready_list, compare_thread_priority, NULL);
 
 }
@@ -734,10 +747,15 @@ donation_back(struct lock *lock)
   else
   {
     t->priority = t->ori_priority;
+    if(t->ori_status == THREAD_BLOCKED)
+      block_yield = true;
   }
+
   list_sort(&ready_list, compare_thread_priority, NULL);
 
 }
+
+
 
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
