@@ -204,6 +204,8 @@ thread_tick (void)
   {
     if (!list_empty(&ready_list))
     {
+      if(thread_mlfqs)
+        list_sort(&ready_list, compare_thread_priority, NULL);
       struct thread *t2 = list_entry(list_front(&ready_list),
                                       struct thread, elem);
       if(t->priority == t2->priority)
@@ -460,7 +462,9 @@ thread_get_priority (void)
 void
 thread_set_nice (int nice) 
 {
+
   struct thread *t = thread_current();
+  t->nice = nice;
   if(nice > NICE_MAX)
     nice = NICE_MAX;
   if(nice < NICE_MIN)
@@ -468,7 +472,7 @@ thread_set_nice (int nice)
   t->priority = PRI_MAX
                 - fp_to_int_rtn(fp_divideby_int(t->recent_cpu, 4))
                 - (nice*2);
-  thread_current()->nice = nice;
+  
   thread_super_yield();
 }
 
