@@ -20,8 +20,8 @@ Executing 'mlfqs-fair-2':
 (mlfqs-fair-2) Thread 1 received 1501 ticks.
 (mlfqs-fair-2) end
 Execution of 'mlfqs-fair-2' complete.
-Timer: 4069 ticks
-Thread: 1000 idle ticks, 3072 kernel ticks, 0 user ticks
+Timer: 4068 ticks
+Thread: 1000 idle ticks, 3071 kernel ticks, 0 user ticks
 Console: 630 characters output
 Keyboard: 0 keys pressed
 Powering off...

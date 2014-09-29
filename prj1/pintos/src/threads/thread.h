@@ -100,7 +100,6 @@ struct thread
     struct list donation_list;          /* Donation information. */
     int ori_priority;                   /* Original priority before 
                                             donation. */
-    enum thread_status ori_status;      /* Original status. */
     struct list_elem donation_elem;     /* Element in donation_list. */
     struct lock *wait_lock;             /* The thread is waiting for the lock */
 

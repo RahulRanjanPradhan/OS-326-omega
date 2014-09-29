@@ -5,7 +5,7 @@ Use of uninitialized value $avg in numeric ge (>=) at /opt/i386dev/bin/pintos li
 00000000000i[     ] BXSHARE not set. using compile time default '/opt/i386dev/share/bochs'
 00000000000i[     ] reading configuration from bochsrc.txt
 00000000000e[     ] user_shortcut: old-style syntax detected
-00000000000i[     ] lt_dlhandle is 0x1d7f0a0
+00000000000i[     ] lt_dlhandle is 0x1ca2e50
 00000000000i[PLGIN] loaded plugin libbx_nogui.la
 00000000000i[     ] installing nogui module as the Bochs GUI
 00000000000i[     ] using log file bochsout.txt

@@ -57,7 +57,6 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
-static bool block_yield = false;
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -652,29 +651,18 @@ thread_super_yield (void)
   {
     struct thread *t = list_entry(list_front(&ready_list),
                                   struct thread, elem);
-    
-    if(block_yield)
+    intr_set_level (old_level);
+    if (!intr_context())
     {
-      block_yield = false;
-      thread_block();
-      intr_set_level(old_level);
-    }
-    else
-    {
-      intr_set_level (old_level);
-      if (!intr_context())
+      if (thread_current()->priority <= t->priority)
       {
-        if (thread_current()->priority <= t->priority)
-        {
-          thread_yield();
-        }
-      }
-      else if ( thread_current()->priority <= t->priority)
-      {
-        intr_yield_on_return ();
+        thread_yield();
       }
     }
-    
+    else if ( thread_current()->priority <= t->priority)
+    {
+      intr_yield_on_return ();
+    }
   }
 }
 
@@ -701,11 +689,6 @@ donation (struct lock *lock)
     depth++;
     donated_t = donated_t->wait_lock->holder;
     donated_t->priority = t->priority;
-  }
-  if (donated_t->status == THREAD_BLOCKED)
-  {
-    thread_unblock(donated_t);
-    donated_t->ori_status = THREAD_BLOCKED;
   }
   list_sort(&ready_list, compare_thread_priority, NULL);
 
@@ -747,8 +730,6 @@ donation_back(struct lock *lock)
   else
   {
     t->priority = t->ori_priority;
-    if(t->ori_status == THREAD_BLOCKED)
-      block_yield = true;
   }
 
   list_sort(&ready_list, compare_thread_priority, NULL);
