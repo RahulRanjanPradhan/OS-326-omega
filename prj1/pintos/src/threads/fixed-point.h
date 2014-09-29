@@ -11,7 +11,7 @@
 
 
 typedef int fixed_point;
-#define F 16384		//1<<14
+#define F (1<<14) //16384
 
 
 

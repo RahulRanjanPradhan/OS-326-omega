@@ -93,8 +93,9 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks)
 {
+  // ASSERT (intr_get_level () == INTR_ON);
+  // intr_disable ();
   ASSERT (intr_get_level () == INTR_ON);
-  intr_disable ();
   if (ticks > 0)
   {
     int64_t start = timer_ticks ();
@@ -104,7 +105,7 @@ timer_sleep (int64_t ticks)
     list_push_back(&sleep_list, &t->sleep_list_elem);
     sema_down(&t->sema);
   }
-  intr_enable();
+  // intr_enable();
 }
 
 

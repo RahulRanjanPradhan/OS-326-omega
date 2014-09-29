@@ -154,8 +154,11 @@ thread_tick (void)
   if (t == idle_thread)
     idle_ticks++;
   else if(thread_mlfqs)
-    fp_add_int(t->recent_cpu, 1);    /* Recent_cpu is incremented by 1 
-                                        for the running thread only. */
+  {
+    /* Recent_cpu is incremented by 1 for the running thread only. */
+    t->recent_cpu = fp_add_int(t->recent_cpu, 1);    
+  }
+    
 
 #ifdef USERPROG
   else if (t->pagedir != NULL)
@@ -208,7 +211,6 @@ thread_tick (void)
     else
       thread_ticks = 0;
   }
-
 }
 
 
@@ -254,8 +256,14 @@ thread_create (const char *name, int priority,
 
   /* Initialize thread. */
   init_thread (t, name, priority);
-  t->nice = thread_current()->nice;
-  t->recent_cpu = thread_current()->recent_cpu;
+  if(thread_mlfqs)
+  {
+    t->nice = thread_current()->nice;
+    t->recent_cpu = thread_current()->recent_cpu;
+    t->priority = PRI_MAX
+                        - fp_to_int_rtn(fp_divideby_int(t->recent_cpu, 4))
+                        - (t->nice*2);
+  }
   tid = t->tid = allocate_tid ();
 
   /* Stack frame for kernel_thread(). */
@@ -451,11 +459,15 @@ thread_get_priority (void)
 void
 thread_set_nice (int nice) 
 {
+  struct thread *t = thread_current();
   if(nice > NICE_MAX)
     nice = NICE_MAX;
   if(nice < NICE_MIN)
     nice = NICE_MIN;
-  thread_current ()->nice = nice;
+  t->priority = PRI_MAX
+                - fp_to_int_rtn(fp_divideby_int(t->recent_cpu, 4))
+                - (nice*2);
+  thread_current()->nice = nice;
 }
 
 /* Returns the current thread's nice value. */
@@ -708,7 +720,6 @@ bool compare_thread_priority (const struct list_elem *a,
 void 
 thread_super_yield (void)
 {
-
   enum intr_level old_level;
   old_level = intr_disable ();
   
