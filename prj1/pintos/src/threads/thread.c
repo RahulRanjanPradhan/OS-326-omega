@@ -19,6 +19,9 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+/* Max depth to donate priority. */
+#define MAX_DEPTH 8
+
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
@@ -494,6 +497,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  t->wait_lock = NULL;
   list_init (&t->donation_list);
 
 
@@ -673,17 +677,25 @@ donation (struct lock *lock)
   {
     donated_t->ori_priority = donated_t->priority;
   }
-  t->lock_donator = lock;
+  t->wait_lock = lock;
   list_push_front(&donated_t->donation_list, &t->donation_elem);
   
-  /* Ready to donate. */
+  int depth = 0;
   donated_t->priority = t->priority;
+  /* Ready to donate. */
+  while(donated_t->wait_lock != NULL && depth <= MAX_DEPTH)
+  {
+    depth++;
+    donated_t = donated_t->wait_lock->holder;
+    donated_t->priority = t->priority;
+  }
+  // if (donated_t->status == THREAD_BLOCKED)
+  // {
+  //   thread_unblock(donated_t);
+  //   ori_status = THREAD_BLOCKED;
+  // }
   list_sort(&ready_list, compare_thread_priority, NULL);
-  // list_remove(&donated_t->elem);
-  // list_insert_ordered(&ready_list, 
-  //                     &donated_t->elem, 
-  //                     compare_thread_priority, 
-  //                     NULL);
+
 }
 
 /* Restore the priority of thread. */ 
@@ -699,15 +711,13 @@ donation_back(struct lock *lock)
        e != list_end (&t->donation_list);
        )
   {
-    // printf("*******  delete donation  ********\n");
     iterator = list_entry (e, struct thread, donation_elem);
     /* Donation_list records how this thread is donated. */
-    if(iterator->lock_donator == lock)
+    if(iterator->wait_lock == lock)
     {
-      // printf("*******  find donation  ********\n");
       /* Remove this donation. */
       e = list_remove(e);
-      iterator->lock_donator = NULL;
+      iterator->wait_lock = NULL;
     }
     else
       e = list_next (e);
@@ -720,7 +730,6 @@ donation_back(struct lock *lock)
                                       struct thread, 
                                       donation_elem);
     t->priority = first->priority;
-  
   }
   else
   {

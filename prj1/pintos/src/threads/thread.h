@@ -97,11 +97,12 @@ struct thread
                                             wake up. */
 
 
-    struct list donation_list;          /* Record donation information. */
-    int ori_priority;                   /* Record original priority before 
+    struct list donation_list;          /* Donation information. */
+    int ori_priority;                   /* Original priority before 
                                             donation. */
-    struct list_elem donation_elem;      /* Element in donation_list. */
-    struct lock *lock_donator;           /* This thread donated in this lock. */
+    enum thread_status ori_status;      /* Original status. */
+    struct list_elem donation_elem;     /* Element in donation_list. */
+    struct lock *wait_lock;             /* The thread is waiting for the lock */
 
 
     /* Shared between thread.c and synch.c. */
