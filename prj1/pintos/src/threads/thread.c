@@ -182,6 +182,7 @@ thread_tick (void)
                       - (t->nice*2);
       }
       calc_ticks = 0;
+      thread_super_yield();
     }
 
     /* when timer_ticks() % TIMER_FREQ == 0, update recent_cpu and load_avg. */
@@ -468,6 +469,7 @@ thread_set_nice (int nice)
                 - fp_to_int_rtn(fp_divideby_int(t->recent_cpu, 4))
                 - (nice*2);
   thread_current()->nice = nice;
+  thread_super_yield();
 }
 
 /* Returns the current thread's nice value. */
