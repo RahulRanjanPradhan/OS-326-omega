@@ -41,7 +41,12 @@ void cond_init (struct condition *);
 void cond_wait (struct condition *, struct lock *);
 
 /* Compare elem by priority. Greater priority would run first. */
-bool compare_thread_priority_in_sema (const struct list_elem *,
+bool compare_priority_condition_insert (const struct list_elem *,
+                                        const struct list_elem *,
+                                        void *);
+
+/* Compare elem by priority. Greater priority would run first. */
+bool compare_priority_condition_sort (const struct list_elem *,
                                       const struct list_elem *,
                                       void *);
 

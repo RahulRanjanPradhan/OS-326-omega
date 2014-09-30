@@ -327,7 +327,7 @@ cond_wait (struct condition *cond, struct lock *lock)
   /* insert in priority order. */
   list_insert_ordered(&cond->waiters, 
                       &waiter.elem, 
-                      compare_thread_priority_in_sema, 
+                      compare_priority_condition_insert, 
                       &thread_current()->priority);
   lock_release (lock);
   sema_down (&waiter.semaphore);
@@ -352,8 +352,12 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (lock_held_by_current_thread (lock));
 
   if (!list_empty (&cond->waiters)) 
+  {
+    /* sort the list in case the donation modifies the priority in condition.*/ 
+    list_sort(&cond->waiters, compare_priority_condition_sort, NULL);
     sema_up (&list_entry (list_pop_front (&cond->waiters),
                           struct semaphore_elem, elem)->semaphore);
+  }
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
@@ -374,11 +378,14 @@ cond_broadcast (struct condition *cond, struct lock *lock)
 
 /* Compare elem by priority. Greater priority would run first. 
   a is the elem in semaphore_elem we are inserting.
-  b is the elem in semaphore_elem in cond->waters. */
-bool compare_thread_priority_in_sema (const struct list_elem *a,
+  b is the elem in semaphore_elem in cond->waters. 
+  At this time we don't have current thread in a, 
+  so we need *aux to pass current priority. */
+bool compare_priority_condition_insert (const struct list_elem *a,
                                       const struct list_elem *b,
                                       void *priority_)
 {
+
   int *priority = priority_;
   struct semaphore_elem *s = list_entry (b, struct semaphore_elem, elem);
   struct thread *t = list_entry( list_front(&(s->semaphore.waiters)),
@@ -386,3 +393,28 @@ bool compare_thread_priority_in_sema (const struct list_elem *a,
                                   elem);
   return *priority > t->priority;
 }
+
+
+/* Compare elem by priority. Greater priority would run first. */
+bool compare_priority_condition_sort (const struct list_elem *a,
+                                      const struct list_elem *b,
+                                      void *aux)
+{
+  struct semaphore_elem *s1 = list_entry (a, struct semaphore_elem, elem);
+
+  if(list_empty(&s1->semaphore.waiters))
+    return false;
+
+  struct semaphore_elem *s2 = list_entry (b, struct semaphore_elem, elem);
+  if(list_empty(&s2->semaphore.waiters))
+    return true;
+
+  struct thread *t1 = list_entry( list_front(&(s1->semaphore.waiters)),
+                                  struct thread,
+                                  elem);
+  struct thread *t2 = list_entry( list_front(&(s2->semaphore.waiters)),
+                                  struct thread,
+                                  elem);
+  return t1->priority > t2->priority;
+}
+
