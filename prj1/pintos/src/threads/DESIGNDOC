@@ -164,7 +164,7 @@ Otherwise change the ori_priority instead.
 ---- SYNCHRONIZATION ----
 
 Do donation and donation_back with interrupt-off.
-So race-codition between threads and timer interrupt won't happen.
+So race-condition between threads and timer interrupt won't happen.
 
 ---- RATIONALE ----
 
@@ -172,7 +172,7 @@ Advantage: Ensure the thread with highest priority will be finished first. Even
 if this thread acquires a lock which is already holded by another lower 
 priority thread.
 
-Disadvantage: No deadlock dectection and avoidance.
+Disadvantage: No deadlock detection and avoidance.
 
                             ADVANCED SCHEDULER     
                             ==================
@@ -226,7 +226,7 @@ But that won't affect the result.
 ---- RATIONALE ----
 
 Advantage: Reduce the average response time for running jobs.
-Disadvantage: Cost some time to recalucate the priority, recent_cpu 
+Disadvantage: Cost some time to recalculate the priority, recent_cpu 
               and load_avg.
 
 
