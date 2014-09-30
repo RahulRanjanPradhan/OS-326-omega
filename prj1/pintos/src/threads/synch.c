@@ -113,9 +113,11 @@ sema_try_down (struct semaphore *sema)
 void
 sema_up (struct semaphore *sema) 
 {
-  enum intr_level old_level = intr_disable ();
+  enum intr_level old_level;
+
   ASSERT (sema != NULL);
 
+  old_level = intr_disable ();
   if (!list_empty (&sema->waiters)) 
   {
     list_sort(&sema->waiters, compare_thread_priority, NULL);
@@ -204,7 +206,7 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  // enum intr_level old_level = intr_disable ();
+
   if(lock->holder != NULL && !thread_mlfqs)
     donation(lock);
 
@@ -212,7 +214,6 @@ lock_acquire (struct lock *lock)
 
 
   lock->holder = thread_current ();
-  // intr_set_level(old_level);
 }
 
 
@@ -250,14 +251,11 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
 
   lock->holder = NULL;
-
-  // enum intr_level old_level = intr_disable ();
   if(!list_empty(&thread_current()->donation_list)
       && !list_empty(&lock->semaphore.waiters)
       && !thread_mlfqs)
     donation_back(lock);
   sema_up (&lock->semaphore);
-  // intr_set_level (old_level);
 
 }
 
@@ -336,20 +334,7 @@ cond_wait (struct condition *cond, struct lock *lock)
   lock_acquire (lock);
 }
 
-/* Compare elem by priority. Greater priority would run first. 
-  a is the elem in semaphore_elem we are inserting.
-  b is the elem in semaphore_elem in cond->waters. */
-bool compare_thread_priority_in_sema (const struct list_elem *a,
-                                      const struct list_elem *b,
-                                      void *priority_)
-{
-  int *priority = priority_;
-  struct semaphore_elem *s = list_entry (b, struct semaphore_elem, elem);
-  struct thread *t = list_entry( list_front(&(s->semaphore.waiters)),
-                                  struct thread,
-                                  elem);
-  return *priority > t->priority;
-}
+
 
 /* If any threads are waiting on COND (protected by LOCK), then
    this function signals one of them to wake up from its wait.
@@ -387,3 +372,17 @@ cond_broadcast (struct condition *cond, struct lock *lock)
     cond_signal (cond, lock);
 }
 
+/* Compare elem by priority. Greater priority would run first. 
+  a is the elem in semaphore_elem we are inserting.
+  b is the elem in semaphore_elem in cond->waters. */
+bool compare_thread_priority_in_sema (const struct list_elem *a,
+                                      const struct list_elem *b,
+                                      void *priority_)
+{
+  int *priority = priority_;
+  struct semaphore_elem *s = list_entry (b, struct semaphore_elem, elem);
+  struct thread *t = list_entry( list_front(&(s->semaphore.waiters)),
+                                  struct thread,
+                                  elem);
+  return *priority > t->priority;
+}

@@ -169,7 +169,8 @@ thread_tick (void)
   
   if(thread_mlfqs)
   {
-    /*  Every 4th clock tick recalculate priority for every thread. */
+    /*  Every 4th clock tick recalculate priority for every thread. 
+	priority = PRI_MAX - (recent_cpu / 4) - (nice * 2)				*/
     if (++calc_ticks >= TIME_SLICE )
     {
       struct list_elem *e;
@@ -469,6 +470,7 @@ thread_set_nice (int nice)
     nice = NICE_MAX;
   if(nice < NICE_MIN)
     nice = NICE_MIN;
+  
   t->priority = PRI_MAX
                 - fp_to_int_rtn(fp_divideby_int(t->recent_cpu, 4))
                 - (nice*2);
@@ -757,6 +759,7 @@ thread_super_yield (void)
 void
 donation (struct lock *lock)
 {
+  enum intr_level old_level = intr_disable ();
   struct thread *t = thread_current();
   struct thread *donated_t = lock->holder;
 
@@ -769,6 +772,7 @@ donation (struct lock *lock)
   list_push_front(&donated_t->donation_list, &t->donation_elem);
   
   int depth = 0;
+  
   donated_t->priority = t->priority;
   /* Ready to donate. */
   while(donated_t->wait_lock != NULL && depth <= MAX_DEPTH)
@@ -778,6 +782,7 @@ donation (struct lock *lock)
     donated_t->priority = t->priority;
   }
   list_sort(&ready_list, compare_thread_priority, NULL);
+  intr_set_level (old_level);
 
 }
 
@@ -785,6 +790,7 @@ donation (struct lock *lock)
 void
 donation_back(struct lock *lock)
 {
+  enum intr_level old_level = intr_disable ();
   struct thread *t = thread_current();
   struct list_elem *e;
   struct thread *iterator;
@@ -806,6 +812,7 @@ donation_back(struct lock *lock)
       e = list_next (e);
   }
 
+  
   /* Undo donation. */
   if(!list_empty(&t->donation_list))
   {
@@ -820,7 +827,7 @@ donation_back(struct lock *lock)
   }
 
   list_sort(&ready_list, compare_thread_priority, NULL);
-
+  intr_set_level (old_level);
 }
 
 /* recent_cpu = (2*load_avg)/(2*load_avg + 1)*recent_cpu + nice */
