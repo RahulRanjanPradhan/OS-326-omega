@@ -182,6 +182,7 @@ thread_tick (void)
                       - fp_to_int_rtn(fp_divideby_int(t->recent_cpu, 4))
                       - (t->nice*2);
       }
+      
       calc_ticks = 0;
       thread_super_yield();
     }

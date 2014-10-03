@@ -122,7 +122,7 @@ situations when a new thread comes.
 
 Disadvantage: Not found yet.
 
-                            PRIORITY DONATION     
+                            PRIORITY DONATION
                             =================
 
 ---- DATA STRUCTURES ----
@@ -186,7 +186,7 @@ Added to struct thread:
   int recent_cpu;                     /* Measure how much CPU time each 
                                         process has received "recently". */
 
-**** timer.c ****
+**** thread.c ****
 Add two static members:
 static unsigned calc_ticks;     /* # of timer ticks since last calculate
                                   priority in mlfqs. */
