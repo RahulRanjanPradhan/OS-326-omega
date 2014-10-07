@@ -1,0 +1,273 @@
+                            +-------------------+
+                            |   CS 326          |
+                            |  PROJECT 1        |
+                            | DESIGN DOCUMENT   |
+                            +-------------------+
+
+ ---- GROUP ----
+Yi Xu     <yxu66@dons.usfca.edu>
+Jie Gao   <jgao11@dons.usfca.edu>
+Wei Fang  <wfang2@dons.usfca.edu>
+
+
+---- PRELIMINARIES ----
+
+None.
+
+                            ALARM CLOCK     
+                            ===========
+
+---- DATA STRUCTURES ----
+
+**** thread.h ****
+Added to struct thread:
+  struct semaphore sema;              /* Semaphore used to lock this thread 
+                                           when sleep */
+  int64_t wakeup_time;                /* Time that this thread should 
+                                            wake up. */
+  struct list_elem sleep_list_elem;   /* Element in sleep_list. */
+
+**** timer.c ****
+Add a static member:
+    /* List of processes in sleeping state, that is, processes
+       should be be blocked until the wakeup_time of the processes. */
+    static struct list sleep_list;
+
+---- ALGORITHMS ----
+
+Use semaphore to implement new thread_sleep() instead of possible busy 
+waiting. Each thread has two new attributes: semaphore and wakeup_time.
+When a thread needs to sleep, call sema_down(), and add the thread to
+sleep_list. The new timer_interrupt checks the sleep_list every tick by
+wakeup_time to see if there are threads that need to be woken up.
+If so, use sema_up() to wake them up and then add them to ready_list.
+
+---- SYNCHRONIZATION ----
+
+Every #(TIME_SLICE) ticks, timer_interrupt() will check the sleep_list one by 
+one if there are threads need wake up. If it is the right time for a thread to
+wake up, then timer_interrupt() will sema_up to 
+
+
+---- RATIONALE ----
+
+Advantage: The timer_sleep can guarantee the thread to sleep for the expected 
+time using semaphore and wakeup-time. The scheduler will not pick the 
+thread that should be in sleep state. And unlike lock, semaphore can access 
+by others, so that timer_interrupt can go through the sleep_list and wake 
+the thread up after it had slept enough time.
+
+Disadvantage: The design is wasteful because each thread need to have
+a semaphore. Actually, we think about using one semaphore to implement the
+same function, but it will need to sort sleep_list in sleep_time ascending 
+order in synch.c. This conflicts with priority scheduler. 
+So we discard this design.
+
+
+                            PRIORITY SCHEDULER     
+                            ==================
+
+---- DATA STRUCTURES ----
+
+None.
+
+---- ALGORITHMS ----
+
+According to the requirements of priority schedule, make these changes.
+
+When a thread is added to the ready_list:
+1. create a new thread
+2. wake up a sleep thread
+3. unblock a thread
+4. yield the CPU
+Use compare_thread_priority to keep all the threads in ready_list is listing
+by decreasing priority.
+
+Create a new method: thread_super_yield to call scheduler whether it is in
+interrupt or not so that when a thread is added to the ready list that has a
+higher priority than the current running thread, yield the processor 
+immediately to the new thread.
+
+Change the method thread_ticks to handle the case
+1. When the first thread's priority in ready_list is equal to current
+thread's: use round_robin.
+2. When the first thread's priority in ready_list is less than current
+thread's: make the thread_ticks to 0, so the scheduler will check 
+#(TIME_SLICE) ticks later.
+
+Also, when we use semaphore to block a thread, we make the insertion in the
+order of decreasing priority to the list named waiter. We modified sema_up 
+and cond_wait, then when threads are waiting for semaphore or condition 
+variable, the highest priority waiting thread will always be woken up first.
+
+---- SYNCHRONIZATION ----
+
+Two synchronization ways:
+1. Synchronous  : Every #(TIME_SLICE) ticks, timer_interrupt() will do 
+                  round-robin between the same priority thread.
+2. Asynchronous : Whenever there is a potential higher priority thread added
+                 to the ready_list, we will call thread_super_yield() to make
+                 sure that the highest priority thread is running.
+
+---- RATIONALE ----
+
+Advantage: Enable priority scheduler that highest priority thread will be 
+always in running state. If there are several highest priority threads, they 
+will be scheduled in round-robin strategy. Highest priority thread will be 
+the first one in most of lists(i.e. ready list, semaphore->waiting list). 
+At first we compare the priority of the first one in a list with current thread. 
+If the condition isn't matched, we don't call schedule() at all. With the new
+function thread_super_yield(), we can handle in-interrupt and out-interrupt 
+situations when a new thread comes.
+
+Disadvantage: Not found yet.
+
+                            PRIORITY DONATION
+                            =================
+
+---- DATA STRUCTURES ----
+
+**** thread.h ****
+Added to struct thread:
+  struct list donation_list;          /* Donation information. */
+  int ori_priority;                   /* Original priority before donation. */
+  struct lock *wait_lock;             /* The thread is waiting for the lock */
+  struct list_elem donation_elem;     /* Element in donation_list. */
+
+---- ALGORITHMS ----
+
+Start:
+When thread A is acquiring lock L which is holded by thread B.
+Do donation:
+  If this is the first time that B is donated, set ori_priority to current 
+  priority.
+  If B also donated to thread C, donate the priority of A to C as well. Repeat
+  the nest donation. The maximal depth is 8.
+  Push the donation_elem of A to the front of the donation_list of B.
+  Set wait_lock of thread A to lock L. 
+  Block A(push elem of A to lock->sema.waiter).
+
+Then thread B releases the lock L.
+Do donation_back:
+  Delete all donation_elem if all these threads donated to thread B because of 
+  lock L. 
+  Reset wait_lock of thread A.
+  Restore priority of thread B to the highest priority in donation_list. If 
+  there is no donation now, restore to ori_priority.
+  Sort the ready_list.
+End
+
+If a thread whose priority is donated is going to change priority, check if the 
+new priority is higher than the current priority. If so, do the change. 
+Otherwise change the ori_priority instead. 
+
+---- SYNCHRONIZATION ----
+
+Do donation and donation_back with interrupt-off.
+So race-condition between threads and timer interrupt won't happen.
+
+---- RATIONALE ----
+
+Advantage: Ensure the thread with highest priority will be finished first. Even 
+if this thread acquires a lock which is already holded by another lower 
+priority thread.
+
+Disadvantage: No deadlock detection and avoidance.
+
+                            ADVANCED SCHEDULER     
+                            ==================
+
+---- DATA STRUCTURES ----
+
+**** thread.h ****
+Added to struct thread:
+  int nice;                           /* Affect priority for multiple level 
+                                        feedback queue scheduler. */
+  int recent_cpu;                     /* Measure how much CPU time each 
+                                        process has received "recently". */
+
+**** thread.c ****
+Add two static members:
+static unsigned calc_ticks;     /* # of timer ticks since last calculate
+                                  priority in mlfqs. */
+
+static fixed_point load_avg;    /* System load average, estimate the average
+                                  number of threads ready to run over the past
+                                  minute. */
+
+**** Add fixed-point.h ****
+  typedef int fixed_point;      /* Support fixed-point operation. */
+
+
+---- ALGORITHMS ----
+
+Recent_cpu is incremented by 1 for the running thread only.
+
+Every 4th clock tick, recalculate priority for every thread.
+  priority = PRI_MAX - (recent_cpu / 4) - (nice * 2)
+  After recalculating priority, call super_yield()
+
+when timer_ticks() % TIMER_FREQ == 0, update recent_cpu and load_avg.
+  recent_cpu = (2*load_avg)/(2*load_avg + 1) * recent_cpu + nice
+  load_avg = (59/60)*load_avg + (1/60)*ready_threads
+
+Before schedule operation, sort ready_list first.
+
+In thread_set_nice()
+  Set nice( -20 <= nice <= 20),
+  Recalculate priority for this thread
+  call super_yield()
+
+---- SYNCHRONIZATION ----
+
+There is a possible race condition between thread_set_nice and interrupt.
+But that won't affect the result.
+
+---- RATIONALE ----
+
+Advantage: Reduce the average response time for running jobs.
+Disadvantage: Cost some time to recalculate the priority, recent_cpu 
+              and load_avg.
+
+
+                            RESULT     
+                            ======
+Both in bochs and qemu mode:
+
+pass tests/threads/alarm-single
+pass tests/threads/alarm-multiple
+pass tests/threads/alarm-simultaneous
+pass tests/threads/alarm-priority
+pass tests/threads/alarm-zero
+pass tests/threads/alarm-negative
+pass tests/threads/priority-change
+pass tests/threads/priority-donate-one
+pass tests/threads/priority-donate-multiple
+pass tests/threads/priority-donate-multiple2
+pass tests/threads/priority-donate-nest
+pass tests/threads/priority-donate-sema
+pass tests/threads/priority-donate-lower
+pass tests/threads/priority-fifo
+pass tests/threads/priority-preempt
+pass tests/threads/priority-sema
+pass tests/threads/priority-condvar
+pass tests/threads/priority-donate-chain
+pass tests/threads/mlfqs-load-1
+pass tests/threads/mlfqs-load-60
+pass tests/threads/mlfqs-load-avg
+pass tests/threads/mlfqs-recent-1
+pass tests/threads/mlfqs-fair-2
+pass tests/threads/mlfqs-fair-20
+pass tests/threads/mlfqs-nice-2
+pass tests/threads/mlfqs-nice-10
+pass tests/threads/mlfqs-block
+All 27 tests passed.         
+
+
+
+
+
+
+
+
+

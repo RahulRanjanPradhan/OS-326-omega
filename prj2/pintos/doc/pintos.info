@@ -1,0 +1,220 @@
+This is pintos.info, produced by makeinfo version 4.8 from pintos.texi.
+
+
+Indirect:
+pintos.info-1: 73
+pintos.info-2: 299913
+
+Tag Table:
+(Indirect)
+Node: Top73
+Node: Introduction504
+Node: Getting Started2192
+Node: Source Tree Overview3356
+Node: Building Pintos5916
+Node: Running Pintos8265
+Node: Debugging versus Testing11255
+Node: Grading13957
+Node: Testing14245
+Node: Design17009
+Node: Design Document17641
+Node: Source Code20503
+Node: Legal and Ethical Issues23058
+Node: Acknowledgements23997
+Node: Trivia25027
+Node: Project 1--Threads25767
+Node: Project 1 Background26799
+Node: Understanding Threads27057
+Ref: Understanding Threads-Footnote-130328
+Node: Project 1 Source Files30593
+Node: devices code34043
+Node: lib files36413
+Node: Project 1 Synchronization38324
+Node: Development Suggestions40879
+Node: Project 1 Requirements42388
+Node: Project 1 Design Document42654
+Node: Alarm Clock43176
+Node: Priority Scheduling44987
+Node: Advanced Scheduler48042
+Node: Project 1 FAQ49498
+Ref: Adding Source Files50648
+Ref: The pass function fails52623
+Node: Alarm Clock FAQ55157
+Node: Priority Scheduling FAQ55645
+Node: Advanced Scheduler FAQ60112
+Node: Project 2--User Programs61847
+Node: Project 2 Background63102
+Node: Project 2 Source Files64623
+Ref: Project 2 Source Files-Footnote-166772
+Node: Using the File System66948
+Node: How User Programs Work71963
+Node: Virtual Memory Layout73689
+Node: Typical Memory Layout75482
+Node: Accessing User Memory78114
+Node: Project 2 Suggested Order of Implementation81031
+Node: Project 2 Requirements83333
+Node: Project 2 Design Document83670
+Node: Process Termination Messages84210
+Node: Argument Passing85131
+Node: System Calls86575
+Node: Denying Writes to Executables97261
+Node: Project 2 FAQ98084
+Node: Argument Passing FAQ103007
+Node: System Calls FAQ103693
+Ref: Removing an Open File104458
+Node: 80x86 Calling Convention105842
+Node: Program Startup Details107977
+Node: System Call Details111296
+Node: Project 3--Virtual Memory113433
+Node: Project 3 Background114553
+Node: Project 3 Source Files114947
+Node: Memory Terminology115634
+Node: Pages116163
+Node: Frames117457
+Node: Page Tables118659
+Node: Swap Slots119948
+Node: Resource Management Overview120336
+Node: Managing the Supplemental Page Table122959
+Node: Managing the Frame Table126251
+Node: Accessed and Dirty Bits128242
+Node: Managing the Swap Table129640
+Node: Managing Memory Mapped Files Back130968
+Node: Project 3 Suggested Order of Implementation132738
+Node: Project 3 Requirements134438
+Node: Project 3 Design Document135109
+Node: Paging135620
+Node: Stack Growth137626
+Ref: Stack Growth-Footnote-1140238
+Node: Memory Mapped Files140506
+Node: Project 3 FAQ145147
+Ref: VM Extra Credit146908
+Ref: Why PAL_USER?148892
+Node: Project 4--File Systems149561
+Node: Project 4 Background150527
+Node: File System New Code150761
+Node: Testing File System Persistence152359
+Node: Project 4 Suggested Order of Implementation153910
+Node: Project 4 Requirements154967
+Node: Project 4 Design Document155299
+Node: Indexed and Extensible Files155838
+Node: Subdirectories158416
+Node: Buffer Cache162990
+Node: File System Synchronization165776
+Node: Project 4 FAQ167954
+Node: Indexed Files FAQ170540
+Node: Subdirectories FAQ170995
+Node: Buffer Cache FAQ171715
+Node: Reference Guide173535
+Node: Pintos Loading174280
+Node: Pintos Loader174584
+Node: Low-Level Kernel Initialization177325
+Node: High-Level Kernel Initialization179492
+Node: Physical Memory Map183362
+Node: Threads184486
+Node: struct thread184687
+Ref: Thread States187892
+Node: Thread Functions191763
+Node: Thread Switching196677
+Ref: Thread Switching-Footnote-1199774
+Node: Synchronization200018
+Node: Disabling Interrupts200566
+Node: Semaphores202959
+Node: Locks205830
+Node: Monitors207659
+Node: Optimization Barriers212397
+Node: Interrupt Handling217054
+Node: Interrupt Infrastructure218927
+Node: Internal Interrupt Handling222297
+Node: External Interrupt Handling225093
+Node: Memory Allocation228230
+Node: Page Allocator228578
+Node: Block Allocator231884
+Node: Virtual Addresses235108
+Node: Page Table238403
+Node: Page Table Creation Destruction Activation239059
+Node: Page Tables Inspection and Updates240046
+Node: Page Table Accessed and Dirty Bits241762
+Node: Page Table Details243373
+Node: Page Table Structure243844
+Ref: Page Table Structure-Footnote-1248367
+Node: Page Table Entry Format248654
+Node: Page Directory Entry Format252183
+Node: Hash Table253060
+Node: Hash Data Types253849
+Node: Basic Hash Functions258508
+Node: Hash Search Functions260660
+Node: Hash Iteration Functions263452
+Node: Hash Table Example265641
+Node: Hash Auxiliary Data268587
+Node: Hash Synchronization269507
+Node: 4.4BSD Scheduler270403
+Node: Thread Niceness272270
+Node: Calculating Priority273561
+Node: Calculating recent_cpu274989
+Node: Calculating load_avg278410
+Node: 4.4BSD Scheduler Summary279662
+Node: Fixed-Point Real Arithmetic280929
+Ref: Fixed-Point Real Arithmetic-Footnote-1285547
+Node: Coding Standards285693
+Node: Coding Style286626
+Node: C99288743
+Node: Unsafe String Functions291539
+Node: Project Documentation293084
+Node: Sample Assignment293519
+Node: Sample Design Document295396
+Node: Debugging Tools299913
+Node: printf300332
+Node: ASSERT301451
+Node: Function and Parameter Attributes302555
+Node: Backtraces303876
+Node: Backtrace Example305993
+Node: GDB310530
+Ref: GDB-Footnote-1311387
+Node: Using GDB311509
+Ref: Using GDB-Footnote-1317355
+Node: Example GDB Session317601
+Node: GDB FAQ324654
+Node: Triple Faults326284
+Node: Modifying Bochs328476
+Node: Debugging Tips330196
+Node: Development Tools331124
+Node: Tags331408
+Node: cscope332122
+Ref: cscope-Footnote-1333368
+Node: Git333435
+Node: VNC334082
+Node: Installing Pintos334539
+Node: Building Bochs for Pintos339510
+Node: Bibliography342640
+Node: Hardware References342858
+Ref: IA32-v1342995
+Ref: IA32-v2a343246
+Ref: IA32-v2b343510
+Ref: IA32-v3a343774
+Ref: FreeVGA344078
+Ref: kbd344161
+Ref: ATA-3344230
+Ref: PC16550D344390
+Ref: 8254344546
+Ref: 8259A344632
+Ref: MC146818A344757
+Node: Software References344868
+Ref: ELF1345048
+Ref: ELF2345258
+Ref: ELF3345446
+Ref: SysV-ABI345646
+Ref: SysV-i386345779
+Ref: SysV-ABI-update345944
+Ref: SUSv3346109
+Ref: Partitions346178
+Ref: IntrList346260
+Node: Operating System Design References346325
+Ref: Christopher346507
+Ref: Dijkstra346725
+Ref: Hoare346908
+Ref: Lampson347082
+Ref: McKusick347273
+Ref: Wilson347439
+Node: License347679
+
+End Tag Table
