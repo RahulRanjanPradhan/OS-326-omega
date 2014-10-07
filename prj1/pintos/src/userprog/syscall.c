@@ -16,7 +16,7 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  switch(*f->esp)
+  switch(*(f->esp))
   {
     /* Halt the operating system. */
     case SYS_HALT:                  
@@ -25,12 +25,11 @@ syscall_handler (struct intr_frame *f)
     
     /* Terminate this process. */
     case SYS_EXIT:  
-      *f->esp
       break;  
     
     /* Start another process. */
     case SYS_EXEC:                  
-      
+
       break;
     
     /* Wait for a child process to die. */
