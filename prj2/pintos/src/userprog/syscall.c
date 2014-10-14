@@ -48,7 +48,7 @@ int write(int fd, const void *buffer, unsigned size)
 	//Fd=1(STDOUT_FILENO) writes to the console. 
 	if(fd == STDOUT_FILENO)
 	{
-		putbuff(buffer,size);
+		putbuf(buffer,size);
 		return size;
 	}
 	lock_acquire(&filesys_lock);
@@ -56,12 +56,36 @@ int write(int fd, const void *buffer, unsigned size)
 	struct file *f = process_get_file(fd);
 	if(!file) {
 		lock_release(&filesys_lock);
-		return ERROR; //-1
+		return ERROR;  //-1
 	}
 	//return number of bytes actually written, maybe less than size if end of file is reached.
-		int size = file_read(f, buffer, size);
+		int bytes = file_read(f, buffer, size);
 		lock_release(*filesys_lock);
-		return size;
+		return bytes;
 }
+int read(int fd, void *buffer,unsigned size) 
+{
+	//read from keyboard. Fd 0 reads from keyboard using input_getc(): one each time.
+	if(fd == STDIN_FILENO){
+		uint8_t *into_buffer = (uint8_t *) buffer;
+		unsigned i;
+		for(i = 0;i<size;i++) 
+		{
+			into_buffer[i] = input_getc();
+		}
+		return size; 
+	}
 
+		//read from file into buffer
+	lock_acqure(&filesys_lock);
+	struct file *f = process_get_file(fd);
+	//return -1 if file couldn't be read.
+	if(!f) {
+		lock_release(&filesys_lock);
+		return ERROR;
+	}
+	int bytes = file_read(f,buffer,size);
+	lock_release(&filesys_lock);
+	return bytes;
+}
 		
