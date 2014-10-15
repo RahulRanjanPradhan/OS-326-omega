@@ -3,27 +3,33 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+<<<<<<< Updated upstream
 #include "userprog/process.h"
 #include "filesys/file.h"
 
 struct lock filesys_lock;
+=======
+#include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+>>>>>>> Stashed changes
 
 static void syscall_handler (struct intr_frame *);
 struct file* process_get_file(int fd);  //return file by file descriptor
 
 void
-syscall_init (void) 
+syscall_init (void)
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
 static void
-syscall_handler (struct intr_frame *f UNUSED) 
+syscall_handler (struct intr_frame *f UNUSED)
 {
   printf ("system call!\n");
   thread_exit ();
 }
 
+<<<<<<< Updated upstream
 int wait(pid_t pid)
 {
 	return process_wait(pid);
@@ -89,3 +95,30 @@ int read(int fd, void *buffer,unsigned size)
 	return bytes;
 }
 		
+=======
+void
+check_ptr(const void *ptr)
+{
+  if(ptr == NULL || !is_user_vaddr(ptr) ||
+     pagedir_get_page(thread_current()->pagedir, ptr) == NULL)
+  {
+    thread_exit();
+  }
+}
+
+void
+check_string(void *string, unsigned len)
+{
+  void *string_end = string + len - 1;
+  check_ptr(string);
+  check_ptr(string_end);
+}
+
+void
+check_buffer (void *buffer, unsigned size)
+{
+  void *buffer_end = buffer + size -1;
+  check_ptr(buffer);
+  check_ptr(buffer_end);
+}
+>>>>>>> Stashed changes

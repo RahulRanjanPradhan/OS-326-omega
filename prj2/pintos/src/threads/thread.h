@@ -92,20 +92,22 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
-    struct semaphore sema;              /* Semaphore used to lock this thread 
+    struct semaphore sema;              /* Semaphore used to lock this thread
                                            when sleep */
-    int64_t wakeup_time;                /* Time that this thread should 
+    int64_t wakeup_time;                /* Time that this thread should
                                             wake up. */
-
+    struct semaphore wait;              /* Semaphore used when process_execute
+                                           is create a thread, it have to wait
+                                           until the thread have load. */
 
     struct list donation_list;          /* Donation information. */
-    int ori_priority;                   /* Original priority before 
+    int ori_priority;                   /* Original priority before
                                             donation. */
     struct lock *wait_lock;             /* The thread is waiting for the lock */
 
-    int nice;                           /* Affect priority for multiple level 
+    int nice;                           /* Affect priority for multiple level
                                            feedback queue scheduler. */
-    int recent_cpu;                     /* Measure how much CPU time each 
+    int recent_cpu;                     /* Measure how much CPU time each
                                            process has received "recently". */
 
     /* Shared between thread.c and synch.c. */
@@ -172,7 +174,7 @@ void thread_super_yield (void);
 /* do donation. */
 void donation (struct lock *);
 /* Restore the donated thread. */
-void donation_back (struct lock *);  
+void donation_back (struct lock *);
 
 void calc_recent_cpu(struct thread *);
 void calc_load_avg(void);

@@ -1,0 +1,15 @@
+Prototype mismatch: sub main::SIGVTALRM () vs none at /opt/i386dev/bin/pintos line 937.
+Constant subroutine SIGVTALRM redefined at /opt/i386dev/bin/pintos line 929.
+Use of uninitialized value $avg in numeric ge (>=) at /opt/i386dev/bin/pintos line 907.
+00000000000i[     ] LTDL_LIBRARY_PATH not set. using compile time default '/opt/i386dev/lib/bochs/plugins'
+00000000000i[     ] BXSHARE not set. using compile time default '/opt/i386dev/share/bochs'
+00000000000i[     ] reading configuration from bochsrc.txt
+00000000000e[     ] user_shortcut: old-style syntax detected
+00000000000i[     ] lt_dlhandle is 0xf49260
+00000000000i[PLGIN] loaded plugin libbx_nogui.la
+00000000000i[     ] installing nogui module as the Bochs GUI
+00000000000i[     ] using log file bochsout.txt
+========================================================================
+Bochs is exiting with the following message:
+[UNMP ] Shutdown port: shutdown requested
+========================================================================
