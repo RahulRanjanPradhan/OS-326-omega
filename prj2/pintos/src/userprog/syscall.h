@@ -3,7 +3,6 @@
 
 #include "threads/synch.h"
 
-void syscall_init (void);
 struct child_process {
   int pid;
   int load;
@@ -14,6 +13,19 @@ struct child_process {
   struct list_elem elem;
 };
 
-struct child_process* get_child_process(int pid);
-void remove_child_process(struct child_process *cp);
+struct process_file {
+  struct file *file;
+  int fd;
+  struct list_elem elem;
+};
+
+
+
+
+
+void syscall_init (void);
+struct child_process* get_child_process(int);
+void remove_child_process(struct child_process *);
+
+
 #endif /* userprog/syscall.h */

@@ -123,20 +123,23 @@ process_wait (tid_t child_tid)
 {
   struct child_process* cp = get_child_process(child_tid);
   if (!cp)
-    {
-      return -1;
-    }
+  {
+    return -1;
+  }
+
   //fail if wait has been called on child.
   if (cp->wait)
-    {
-      return -1;
-    }
+  {
+    return -1;
+  }
+
   cp->wait = true;
   //parent must block until child process exists.
   while (!cp->exit)
-    {
-      barrier();
-    }
+  {
+    barrier();
+  }
+
   int status = cp->status;
   remove_child_process(cp);
   return status;
@@ -383,6 +386,7 @@ args_passing(void **esp)
     *esp -= (strlen(args[i]) + 1);              // \0 does not count to strlen.
     args_on_stack[i] = *esp;
     length += strlen(args[i]) + 1;
+    printf("*******test*******\n");
     memcpy(*esp, args[i], strlen(args[i]) + 1);
   }
   args_on_stack[argc] = 0;                    // Store null pointer.

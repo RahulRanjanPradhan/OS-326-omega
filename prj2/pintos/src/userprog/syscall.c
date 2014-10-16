@@ -10,17 +10,14 @@
 #include "userprog/process.h"
 #include "userprog/pagedir.h"
 
+#include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "devices/input.h"
 #include "threads/synch.h"
 
+#define FILE_ERROR -1;
+
 struct lock filesys_lock;
-
-/* Typical return values from wait(). */
-#define WAIT_SUCCESS 0          /* Successful wait. */
-#define WAIT_FAILURE -1          /* Unsuccessful wait. */
-
-
 static void syscall_handler (struct intr_frame *);
 void check_ptr(const void *);
 void check_string(const void *);
@@ -33,6 +30,7 @@ struct file* process_get_file(int fd);  //return file by file descriptor
 void
 syscall_init (void)
 {
+  lock_init(&filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -48,111 +46,240 @@ syscall_handler (struct intr_frame *f)
       OUT: void
     */
     case SYS_HALT:
+    {
       shutdown_power_off();
       break;
+    }
     
     /* Terminate this process. 
       IN : int status
       OUT: void
     */  
     case SYS_EXIT:
-
+    {
       check_ptr(p+1);
       printf ("%s: exit(%d)\n", thread_current()->name, *(int *)p+1);
       thread_exit();
       break;
+    }
+      
     
     /* Start another process. 
       IN : const char *file
       OUT: pid_t
     */  
     case SYS_EXEC:
-
+    {
       check_string(p+1);
       f->eax = process_execute((char *)(p+1));
       break;
+      
+    }
     
     /* Wait for a child process to die. 
       IN : pid_t
       OUT: int
     */  
     case SYS_WAIT:
+    {
       check_ptr(p+1);
       f->eax = process_wait(*(tid_t *)(p+1));
       break;
-    
+    }
+
     /* Create a file. 
       IN :const char *file, unsigned initial_size
       OUT:bool
     */
     case SYS_CREATE:
-      check_ptr(p+1);
-      filesys_create()
+    {
+      check_string(p+1);
+      check_ptr(p+2);
+      lock_acquire(&filesys_lock);
+      f->eax = filesys_create((char *)p+1, *(p+2));
+      lock_release(&filesys_lock);
       break;
+    }
     
     /* Delete a file. 
       IN: const char *file
       OUT: bool
     */  
     case SYS_REMOVE:
+    {
 
+      check_string(p+1);
+      lock_acquire(&filesys_lock);
+      f->eax = filesys_remove((char *)p+1);
+      lock_release(&filesys_lock);
       break;
-    
+    }
+
     /* Open a file. 
       IN: const char *file
       OUT: int
     */
-    case SYS_OPEN:          
+    case SYS_OPEN:   
+    {   
+      check_string(p+1);
+      lock_acquire(&filesys_lock);
+      struct file *file = filesys_open((char *)(p+1));
+      if (file == NULL)
+      {
+        f->eax = FILE_ERROR;
+      }
+      else
+      {
 
+      }
+      lock_release(&filesys_lock);
       break;       
-    
+    }
+
     /* Obtain a file's size. 
       IN: int fd
       OUT: int
     */
-    case SYS_FILESIZE:          
-
+    case SYS_FILESIZE:   
+    {
+      check_ptr(p+1);
+      int fd = *(p+1);
+      lock_acquire(&filesys_lock);
+      struct file *file = process_get_file(fd);
+      if (file == NULL)
+      {
+        f->eax = FILE_ERROR;
+      }
+      else
+      {
+        f->eax = file_length(file);
+      }
+      lock_release(&filesys_lock);
       break;     
-    
+    }
+
     /* Read from a file. 
       IN: int fd, void *buffer, unsigned length
       OUT: int
     */
-    case SYS_READ:            
+    case SYS_READ:
+    {
+      check_ptr(p+1);
+      check_ptr(p+3);
+      check_buffer(p+2, *(p+3));
 
+      int fd = *(p + 1);
+      void *buffer = *(p + 2);
+      unsigned length = *(p + 3);
+
+      //read from keyboard. Fd 0 reads from keyboard using input_getc(): one each time.
+      if(fd == STDIN_FILENO){
+        uint8_t *into_buffer = (uint8_t *) buffer;
+        unsigned i;
+        for(i = 0; i < length;i++)
+        {
+          into_buffer[i] = input_getc();
+        }
+        f->eax = length;
+      }
+      else
+      {
+        //read from file into buffer
+        lock_acquire(&filesys_lock);
+        struct file *file = process_get_file(fd);
+        //return -1 if file couldn't be read.
+        if(file == NULL) 
+        {
+          lock_release(&filesys_lock);
+          f->eax = FILE_ERROR;  //-1
+        }
+        else
+        {
+          int bytes = file_read(f,buffer,length);
+          lock_release(&filesys_lock);
+          f->eax = bytes;
+        }
+        
+      }
       break;    
-    
+    }
+
     /* Write to a file. 
       IN: int fd, const void *buffer, unsigned length
       OUT: int
     */  
-    case SYS_WRITE:            
-      // get_arg(f, arg, 3);
-      break;     
-    
+    case SYS_WRITE:
+    {
+      check_ptr(p+1);
+      check_ptr(p+3);
+      check_buffer(p+2, *(p+3));
+
+      int fd = *(p + 1);
+      void *buffer = *(p + 2);
+      unsigned length = *(p + 3);
+
+      //Fd=1(STDOUT_FILENO) writes to the console. 
+      if(fd == STDOUT_FILENO)
+      {
+        putbuf(buffer,length);
+        f->eax = length;
+      }
+      else
+      {
+        lock_acquire(&filesys_lock);
+        // return file by file descriptor.
+        struct file *file = process_get_file(fd);
+        if(file == NULL) 
+        {
+          lock_release(&filesys_lock);
+          f->eax = FILE_ERROR;  //-1
+        }
+        else
+        {
+          //return number of bytes actually written, maybe less than length if end of file is reached.
+          int bytes = file_read(f, buffer, length);
+          lock_release(&filesys_lock);
+          f->eax = bytes;
+        }
+      }
+      break;
+    }
+
     /* Change position in a file. 
       IN: int fd, unsigned position
       OUT: void
     */
     case SYS_SEEK:
+    {
+      lock_acquire(&filesys_lock);
 
+      lock_release(&filesys_lock);
       break;
-    
+    }
+
     /* Report current position in a file. 
       IN: int fd
       OUT: unsigned
     */
     case SYS_TELL:
+    {
+      lock_acquire(&filesys_lock);
 
+      lock_release(&filesys_lock);
       break;
-    
+    }
+
     /* Close a file. 
       IN: int fd
       OUT: void
     */
     case SYS_CLOSE:
+    {
+      lock_acquire(&filesys_lock);
 
+      lock_release(&filesys_lock);
       break;
+    }
 
     default:
       break;
@@ -162,71 +289,6 @@ syscall_handler (struct intr_frame *f)
 }
 
 
-struct process_file {
-  struct file *file;
-  int fd;
-  struct list_elem elem;
-};
-struct file* process_get_file(int fd)
-{
-	struct thread *t = thread_current();
-	struct list_elem *e;
-	for(e = list_begin(&t->file_list); e!=list_end(&t->file_list);e=list_next(e)) {
-		 struct process_file *pf = list_entry (e, struct process_file, elem);
-		 //if match fd, return the process file.
-          if (fd == pf->fd)
-	    {
-	      return pf->file;
-	    }
-	}
-	return NULL;
-}
-// ../lib/user/syscall.h
-int write(int fd, const void *buffer, unsigned size) 
-{
-	//Fd=1(STDOUT_FILENO) writes to the console. 
-	if(fd == STDOUT_FILENO)
-	{
-		putbuf(buffer,size);
-		return size;
-	}
-	lock_acquire(&filesys_lock);
-	// return file by file descriptor.
-	struct file *f = process_get_file(fd);
-	if(!f) {
-		lock_release(&filesys_lock);
-		return WAIT_FAILURE;  //-1
-	}
-	//return number of bytes actually written, maybe less than size if end of file is reached.
-		int bytes = file_read(f, buffer, size);
-		lock_release(&filesys_lock);
-		return bytes;
-}
-int read(int fd, void *buffer,unsigned size) 
-{
-	//read from keyboard. Fd 0 reads from keyboard using input_getc(): one each time.
-	if(fd == STDIN_FILENO){
-		uint8_t *into_buffer = (uint8_t *) buffer;
-		unsigned i;
-		for(i = 0;i<size;i++) 
-		{
-			into_buffer[i] = input_getc();
-		}
-		return size; 
-	}
-
-		//read from file into buffer
-	lock_acquire(&filesys_lock);
-	struct file *f = process_get_file(fd);
-	//return -1 if file couldn't be read.
-	if(!f) {
-		lock_release(&filesys_lock);
-		return WAIT_FAILURE;
-	}
-	int bytes = file_read(f,buffer,size);
-	lock_release(&filesys_lock);
-	return bytes;
-}
 
 
 void
@@ -245,7 +307,7 @@ check_string(const void *ptr)
 {
   check_ptr(ptr);
   int i = 1;
-  while(*(char *)(ptr + i) != '/0')
+  while(*(char *)(ptr + i) != '\0')
   {
     check_ptr(ptr+i);
     i++;
@@ -263,26 +325,41 @@ check_buffer(const void *ptr, unsigned size)
   }
 }
 
+struct file* process_get_file(int fd)
+{
+  struct thread *t = thread_current();
+  struct list_elem *e;
+  for(e = list_begin(&t->file_list); e!=list_end(&t->file_list);e=list_next(e)) {
+     struct process_file *pf = list_entry (e, struct process_file, elem);
+     //if match fd, return the process file.
+          if (fd == pf->fd)
+      {
+        return pf->file;
+      }
+  }
+  return NULL;
+}
+
 struct child_process* get_child_process (int pid)
 {
   struct thread *t = thread_current();
-  struct list_elem *e; //current running thread's children
+  struct list_elem *e; //current thread's children
 
   for (e = list_begin (&t->child_list); e != list_end (&t->child_list);
        e = list_next (e))
-        {
-          struct child_process *cp = list_entry (e, struct child_process, elem);
-          if (pid == cp->pid)
-	    {
-	      return cp;
-	    }
-        }
+  {
+    struct child_process *cp = list_entry (e, struct child_process, elem);
+    if (pid == cp->pid)
+    {
+      return cp;
+    }
+  }
   return NULL;
 }
 
 void remove_child_process(struct child_process *cp)
 {
-	list_remove(&cp->elem);
-	free(cp);
+  list_remove(&cp->elem);
+  free(cp);
 }
 
