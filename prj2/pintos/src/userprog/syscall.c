@@ -3,20 +3,31 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+<<<<<<< Updated upstream
 #include "threads/vaddr.h"
 
 #include "lib/user/syscall.h"
 #include "devices/shutdown.h"
+=======
+>>>>>>> Stashed changes
 #include "userprog/process.h"
 #include "userprog/pagedir.h"
 
 #include "filesys/file.h"
+<<<<<<< Updated upstream
 
 struct lock filesys_lock;
 
 /* Typical return values from wait(). */
 #define WAIT_SUCCESS 0          /* Successful wait. */
 #define WAIT_FAILURE 1          /* Unsuccessful wait. */
+=======
+#include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+
+
+
+>>>>>>> Stashed changes
 
 static void syscall_handler (struct intr_frame *);
 void check_ptr(const void *);
@@ -47,36 +58,52 @@ syscall_handler (struct intr_frame *f)
     case SYS_HALT:
       shutdown_power_off();
       break;
+<<<<<<< Updated upstream
     
     /* Terminate this process. 
       IN : int status
       OUT: void
     */  
+=======
+
+    /* Terminate this process. */
+>>>>>>> Stashed changes
     case SYS_EXIT:
 
       check_ptr(p+1);
       printf ("%s: exit(%d)\n", thread_current()->name, *(int *)p+1);
       thread_exit();
       break;
+<<<<<<< Updated upstream
     
     /* Start another process. 
       IN : const char *file
       OUT: pid_t
     */  
+=======
+
+    /* Start another process. */
+>>>>>>> Stashed changes
     case SYS_EXEC:
 
       check_string(p+1);
       f->eax = process_execute((char *)(p+1));
       break;
+<<<<<<< Updated upstream
     
     /* Wait for a child process to die. 
       IN : pid_t
       OUT: int
     */  
+=======
+
+    /* Wait for a child process to die. */
+>>>>>>> Stashed changes
     case SYS_WAIT:
       check_ptr(p+1);
       f->eax = process_wait(*(tid_t *)(p+1));
       break;
+<<<<<<< Updated upstream
     
     /* Create a file. 
       IN :const char *file, unsigned initial_size
@@ -91,9 +118,18 @@ syscall_handler (struct intr_frame *f)
       IN: const char *file
       OUT: bool
     */  
+=======
+
+    /* Create a file. */
+    case SYS_CREATE:
+      break;
+
+    /* Delete a file. */
+>>>>>>> Stashed changes
     case SYS_REMOVE:
 
       break;
+<<<<<<< Updated upstream
     
     /* Open a file. 
       IN: const char *file
@@ -131,22 +167,56 @@ syscall_handler (struct intr_frame *f)
       IN: int fd, unsigned position
       OUT: void
     */
+=======
+
+    /* Open a file. */
+    case SYS_OPEN:
+      // get_arg(f, arg, 1);
+      break;
+
+    /* Obtain a file's size. */
+    case SYS_FILESIZE:
+      // get_arg(f, arg, 1);
+      break;
+
+    /* Read from a file. */
+    case SYS_READ:
+      // get_arg(f, arg, 3);
+      break;
+
+    /* Write to a file. */
+    case SYS_WRITE:
+      // get_arg(f, arg, 3);
+      break;
+
+    /* Change position in a file. */
+>>>>>>> Stashed changes
     case SYS_SEEK:
 
       break;
+<<<<<<< Updated upstream
     
     /* Report current position in a file. 
       IN: int fd
       OUT: unsigned
     */
+=======
+
+    /* Report current position in a file. */
+>>>>>>> Stashed changes
     case SYS_TELL:
 
       break;
+<<<<<<< Updated upstream
     
     /* Close a file. 
       IN: int fd
       OUT: void
     */
+=======
+
+    /* Close a file. */
+>>>>>>> Stashed changes
     case SYS_CLOSE:
 
       break;
@@ -174,9 +244,9 @@ struct file* process_get_file(int fd)
 	}
 	return NULL;
 }
-int write(int fd, const void *buffer, unsigned size) 
+int write(int fd, const void *buffer, unsigned size)
 {
-	//Fd=1(STDOUT_FILENO) writes to the console. 
+	//Fd=1(STDOUT_FILENO) writes to the console.
 	if(fd == STDOUT_FILENO)
 	{
 		putbuf(buffer,size);
@@ -194,17 +264,18 @@ int write(int fd, const void *buffer, unsigned size)
 		lock_release(*filesys_lock);
 		return bytes;
 }
-int read(int fd, void *buffer,unsigned size) 
+
+int read(int fd, void *buffer,unsigned size)
 {
 	//read from keyboard. Fd 0 reads from keyboard using input_getc(): one each time.
 	if(fd == STDIN_FILENO){
 		uint8_t *into_buffer = (uint8_t *) buffer;
 		unsigned i;
-		for(i = 0;i<size;i++) 
+		for(i = 0;i<size;i++)
 		{
 			into_buffer[i] = input_getc();
 		}
-		return size; 
+		return size;
 	}
 
 		//read from file into buffer
@@ -219,8 +290,13 @@ int read(int fd, void *buffer,unsigned size)
 	lock_release(&filesys_lock);
 	return bytes;
 }
+<<<<<<< Updated upstream
 */
 
+=======
+
+=======
+>>>>>>> Stashed changes
 void
 check_ptr(const void *ptr)
 {
@@ -233,6 +309,7 @@ check_ptr(const void *ptr)
 }
 
 void
+<<<<<<< Updated upstream
 check_string(const void *ptr)
 {
   check_ptr(ptr);
@@ -242,7 +319,7 @@ check_string(const void *ptr)
     check_ptr(ptr+i);
     i++;
   }
-  
+
 }
 
 void
