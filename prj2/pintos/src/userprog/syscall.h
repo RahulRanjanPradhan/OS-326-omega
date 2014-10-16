@@ -6,7 +6,7 @@
 #define UNLOAD 0
 #define LOAD_SUCCESS 1
 #define LOAD_FAIL -1
-
+#define FILE_ERROR -1;
 
 struct child_process {
   int pid;
@@ -36,6 +36,7 @@ struct child_process* add_child_process (int);
 struct child_process* get_child_process(int);
 void remove_child_process(struct child_process *);
 void remove_child_processes (void);
+struct file *process_get_file(int fd); 
 
 
 #endif /* userprog/syscall.h */

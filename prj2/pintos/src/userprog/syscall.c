@@ -16,20 +16,17 @@
 #include "devices/input.h"
 #include "threads/synch.h"
 
-#define FILE_ERROR -1;
 
 
-struct lock filesys_lock;
+
 static void syscall_handler (struct intr_frame *);
 
 
-struct file *process_get_file(int fd);  //return file by file descriptor
 
 
 void
 syscall_init (void)
 {
-  lock_init(&filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -102,9 +99,9 @@ syscall_handler (struct intr_frame *f)
     if(*(char**)(p+1)==NULL||*(int *)(p+1)>=PHYS_BASE||
       pagedir_get_page(thread_current()->pagedir, (const void *)*(p+1)) == NULL)
       exit(-1);
-    lock_acquire(&filesys_lock);
+    
     f->eax = filesys_create(*(const char **)(p + 1), *(off_t *)(p + 2));
-    lock_release(&filesys_lock);
+    
     break;
   }
 
@@ -119,9 +116,8 @@ syscall_handler (struct intr_frame *f)
     if(*(char**)(p+1)==NULL||*(int *)(p+1)>=PHYS_BASE||
       pagedir_get_page(thread_current()->pagedir, (const void *)*(p+1)) == NULL)
       exit(-1);
-    lock_acquire(&filesys_lock);
+    
     f->eax = filesys_remove(*(char**)(p + 1));
-    lock_release(&filesys_lock);
     break;
   }
 
@@ -132,7 +128,7 @@ syscall_handler (struct intr_frame *f)
   case SYS_OPEN:
   {
     check_string(p + 1);
-    lock_acquire(&filesys_lock);
+    
     struct file *file = filesys_open(*(char**)(p + 1));
     if (file == NULL)
     {
@@ -145,7 +141,6 @@ syscall_handler (struct intr_frame *f)
     thread_current()->fd++;
     list_push_back(&thread_current()->file_list, &desc->elem);
     f->eax = desc->fd;
-    lock_release(&filesys_lock);
     break;
   }
 
@@ -157,7 +152,7 @@ syscall_handler (struct intr_frame *f)
   {
     check_ptr(p + 1);
     int fd = *(p + 1);
-    lock_acquire(&filesys_lock);
+    
     struct file *file = process_get_file(fd);
     if (file == NULL)
     {
@@ -167,7 +162,6 @@ syscall_handler (struct intr_frame *f)
     {
       f->eax = file_length(file);
     }
-    lock_release(&filesys_lock);
     break;
   }
 
@@ -200,19 +194,17 @@ syscall_handler (struct intr_frame *f)
     else
     {
       //read from file into buffer
-      lock_acquire(&filesys_lock);
+      
       struct file *file = process_get_file(fd);
       //return -1 if file couldn't be read.
       if (file == NULL)
       {
-        lock_release(&filesys_lock);
-        f->eax = FILE_ERROR;  //-1
+            f->eax = FILE_ERROR;  //-1
       }
       else
       {
         int bytes = file_read(file, buffer, length);
-        lock_release(&filesys_lock);
-        f->eax = bytes;
+            f->eax = bytes;
       }
 
     }
@@ -231,9 +223,8 @@ syscall_handler (struct intr_frame *f)
     check_buffer(p + 2, *(p + 3));
 
     int fd = *(int *)(p + 1);
-    void *buffer = (void *)*(p + 2);
+    void *buffer = *(char**)(p + 2);
     unsigned length = *(off_t *)(p + 3);
-
     if (length <= 0)
     {
       f->eax = 0;
@@ -247,20 +238,15 @@ syscall_handler (struct intr_frame *f)
     }
     else
     {
-      lock_acquire(&filesys_lock);
       // return file by file descriptor.
       struct file *file = process_get_file(fd);
       if (file == NULL)
       {
-        lock_release(&filesys_lock);
-        f->eax = FILE_ERROR;  //-1
+            f->eax = FILE_ERROR;  //-1
       }
       else
       {
-        //return number of bytes actually written,
-        //maybe less than length if end of file is reached.
         int bytes = file_write(file, buffer, length);
-        lock_release(&filesys_lock);
         f->eax = bytes;
       }
     }
@@ -277,13 +263,12 @@ syscall_handler (struct intr_frame *f)
     check_ptr(p + 2);
     int fd = *(int *)(p+1);
     unsigned position = *(unsigned *)(p+2);
-    lock_acquire(&filesys_lock);
+    
     struct file *file = process_get_file(fd);
     if(file != NULL)
     {
       file_seek(file, position);
     }
-    lock_release(&filesys_lock);
     break;
   }
 
@@ -296,7 +281,7 @@ syscall_handler (struct intr_frame *f)
     check_ptr(p + 1);
     int fd = *(int *)(p+1);
 
-    lock_acquire(&filesys_lock);
+    
     struct file *file = process_get_file(fd);
     if(file != NULL)
     {
@@ -304,7 +289,6 @@ syscall_handler (struct intr_frame *f)
     }
     else
       f->eax = FILE_ERROR;  //-1
-    lock_release(&filesys_lock);
     break;
   }
 
@@ -316,7 +300,7 @@ syscall_handler (struct intr_frame *f)
   {
     check_ptr(p+1);
     int fd = *(int*)(p+1);
-    lock_acquire(&filesys_lock);
+    
     struct thread *t = thread_current();
     struct list_elem *next, *e = list_begin(&t->file_list);
     while (e != list_end (&t->file_list))
@@ -332,7 +316,6 @@ syscall_handler (struct intr_frame *f)
       }
       e = next;
     }
-    lock_release(&filesys_lock);
     break;
   }
 
@@ -382,13 +365,17 @@ check_string(const void *ptr)
 void
 check_buffer(const void *ptr, unsigned size)
 {
-  unsigned i = 0;
-  check_ptr(*(char **)ptr);
+  int i;
   for (i = 0; i < size; i++)
   {
     check_ptr(ptr + i);
-    check_ptr(*(char **)ptr);
+    // if (!is_user_vaddr(*(char **)(ptr+i)) ||
+    //   pagedir_get_page(thread_current()->pagedir, *(char **)(ptr+i)) == NULL)
+    // {
+    //   exit(-1);
+    // }
   }
+
 }
 
 
