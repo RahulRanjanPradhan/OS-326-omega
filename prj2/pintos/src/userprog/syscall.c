@@ -173,7 +173,6 @@ syscall_handler (struct intr_frame *f)
   {
     check_ptr(p + 1);
     check_ptr(p + 2);
-    printf("***** address %p", p+2) ;
     check_ptr(p + 3);
     check_buffer(p + 2, *(p + 3));
 
@@ -367,6 +366,7 @@ void
 check_buffer(const void *ptr, unsigned size)
 {
   int i;
+  check_ptr(*(char**)ptr);
   for (i = 0; i < size; i++)
   {
     // check_ptr(ptr + i);
