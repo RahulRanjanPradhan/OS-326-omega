@@ -126,6 +126,16 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+
+
+	/*For file system sys call*/
+	struct list file_list;
+	/*For wait sys call*/
+	struct list child_list;
+	tid_t parent;
+	//point to child_process struct in parent's child list
+	struct child_process *cp;
+
   };
 
 /* If false (default), use round-robin scheduler.

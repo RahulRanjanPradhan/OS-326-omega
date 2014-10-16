@@ -14,12 +14,18 @@
 #include "userprog/pagedir.h"
 
 #include "filesys/file.h"
+<<<<<<< HEAD
 <<<<<<< Updated upstream
+=======
+#include "devices/input.h"
+#include "threads/synch.h"
+>>>>>>> FETCH_HEAD
 
 struct lock filesys_lock;
 
 /* Typical return values from wait(). */
 #define WAIT_SUCCESS 0          /* Successful wait. */
+<<<<<<< HEAD
 #define WAIT_FAILURE 1          /* Unsuccessful wait. */
 =======
 #include "threads/vaddr.h"
@@ -28,6 +34,10 @@ struct lock filesys_lock;
 
 
 >>>>>>> Stashed changes
+=======
+#define WAIT_FAILURE -1          /* Unsuccessful wait. */
+
+>>>>>>> FETCH_HEAD
 
 static void syscall_handler (struct intr_frame *);
 void check_ptr(const void *);
@@ -229,7 +239,11 @@ syscall_handler (struct intr_frame *f)
 }
 
 
-/*
+struct process_file {
+  struct file *file;
+  int fd;
+  struct list_elem elem;
+};
 struct file* process_get_file(int fd)
 {
 	struct thread *t = thread_current();
@@ -244,7 +258,12 @@ struct file* process_get_file(int fd)
 	}
 	return NULL;
 }
+<<<<<<< HEAD
 int write(int fd, const void *buffer, unsigned size)
+=======
+// ../lib/user/syscall.h
+int write(int fd, const void *buffer, unsigned size) 
+>>>>>>> FETCH_HEAD
 {
 	//Fd=1(STDOUT_FILENO) writes to the console.
 	if(fd == STDOUT_FILENO)
@@ -255,13 +274,13 @@ int write(int fd, const void *buffer, unsigned size)
 	lock_acquire(&filesys_lock);
 	// return file by file descriptor.
 	struct file *f = process_get_file(fd);
-	if(!file) {
+	if(!f) {
 		lock_release(&filesys_lock);
-		return ERROR;  //-1
+		return WAIT_FAILURE;  //-1
 	}
 	//return number of bytes actually written, maybe less than size if end of file is reached.
 		int bytes = file_read(f, buffer, size);
-		lock_release(*filesys_lock);
+		lock_release(&filesys_lock);
 		return bytes;
 }
 
@@ -279,19 +298,23 @@ int read(int fd, void *buffer,unsigned size)
 	}
 
 		//read from file into buffer
-	lock_acqure(&filesys_lock);
+	lock_acquire(&filesys_lock);
 	struct file *f = process_get_file(fd);
 	//return -1 if file couldn't be read.
 	if(!f) {
 		lock_release(&filesys_lock);
-		return ERROR;
+		return WAIT_FAILURE;
 	}
 	int bytes = file_read(f,buffer,size);
 	lock_release(&filesys_lock);
 	return bytes;
 }
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 */
+=======
+
+>>>>>>> FETCH_HEAD
 
 =======
 
@@ -330,5 +353,28 @@ check_buffer(const void *ptr, unsigned size)
   {
     check_ptr(ptr+i);
   }
+}
+
+struct child_process* get_child_process (int pid)
+{
+  struct thread *t = thread_current();
+  struct list_elem *e; //current running thread's children
+
+  for (e = list_begin (&t->child_list); e != list_end (&t->child_list);
+       e = list_next (e))
+        {
+          struct child_process *cp = list_entry (e, struct child_process, elem);
+          if (pid == cp->pid)
+	    {
+	      return cp;
+	    }
+        }
+  return NULL;
+}
+
+void remove_child_process(struct child_process *cp)
+{
+	list_remove(&cp->elem);
+	free(cp);
 }
 
