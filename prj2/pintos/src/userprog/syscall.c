@@ -173,6 +173,7 @@ syscall_handler (struct intr_frame *f)
   {
     check_ptr(p + 1);
     check_ptr(p + 2);
+    printf("***** address %p", p+2) ;
     check_ptr(p + 3);
     check_buffer(p + 2, *(p + 3));
 
@@ -368,12 +369,12 @@ check_buffer(const void *ptr, unsigned size)
   int i;
   for (i = 0; i < size; i++)
   {
-    check_ptr(ptr + i);
-    // if (!is_user_vaddr(*(char **)(ptr+i)) ||
-    //   pagedir_get_page(thread_current()->pagedir, *(char **)(ptr+i)) == NULL)
-    // {
-    //   exit(-1);
-    // }
+    // check_ptr(ptr + i);
+    if ( (ptr+i) == NULL ||
+      pagedir_get_page(thread_current()->pagedir, ptr) == NULL )
+    {
+      exit(-1);
+    }
   }
 
 }
