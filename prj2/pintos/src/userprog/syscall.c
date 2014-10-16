@@ -3,18 +3,29 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
-<<<<<<< Updated upstream
+#include "threads/vaddr.h"
+
+#include "lib/user/syscall.h"
+#include "devices/shutdown.h"
 #include "userprog/process.h"
+#include "userprog/pagedir.h"
+
 #include "filesys/file.h"
 
 struct lock filesys_lock;
-=======
-#include "threads/vaddr.h"
-#include "userprog/pagedir.h"
->>>>>>> Stashed changes
+
+/* Typical return values from wait(). */
+#define WAIT_SUCCESS 0          /* Successful wait. */
+#define WAIT_FAILURE 1          /* Unsuccessful wait. */
 
 static void syscall_handler (struct intr_frame *);
+void check_ptr(const void *);
+void check_string(const void *);
+void check_buffer(const void *, unsigned );
+
+
 struct file* process_get_file(int fd);  //return file by file descriptor
+
 
 void
 syscall_init (void)
@@ -23,18 +34,89 @@ syscall_init (void)
 }
 
 static void
-syscall_handler (struct intr_frame *f UNUSED)
+syscall_handler (struct intr_frame *f)
 {
+  uint32_t *p = f->esp;
+  check_ptr(p);
+  switch(*p)
+  {
+  /* Halt the operating system. */
+    case SYS_HALT:
+      shutdown_power_off();
+      break;
+    
+    /* Terminate this process. */
+    case SYS_EXIT:
+      check_ptr(p+1);
+      printf ("%s: exit(%d)\n", thread_current()->name, *(int *)p+1);
+      thread_exit();
+      break;
+    
+    /* Start another process. */
+    case SYS_EXEC:
+      check_string(p+1);
+      f->eax = process_execute((char *)(p+1));
+      break;
+    
+    /* Wait for a child process to die. */
+    case SYS_WAIT:
+      check_ptr(p+1);
+      f->eax = process_wait(*(tid_t *)(p+1));
+      break;
+    
+    /* Create a file. */
+    case SYS_CREATE:                
+      break;
+    
+    /* Delete a file. */
+    case SYS_REMOVE:
+      // get_arg(f, arg, 1);
+      break;
+    
+    /* Open a file. */
+    case SYS_OPEN:          
+      // get_arg(f, arg, 1);
+      break;       
+    
+    /* Obtain a file's size. */
+    case SYS_FILESIZE:          
+      // get_arg(f, arg, 1);
+      break;     
+    
+    /* Read from a file. */
+    case SYS_READ:            
+      // get_arg(f, arg, 3);
+      break;    
+    
+    /* Write to a file. */  
+    case SYS_WRITE:            
+      // get_arg(f, arg, 3);
+      break;     
+    
+    /* Change position in a file. */
+    case SYS_SEEK:
+      // get_arg(f, arg, 2);
+      break;
+    
+    /* Report current position in a file. */
+    case SYS_TELL:
+      // get_arg(f, arg, 1);
+      break;
+    
+    /* Close a file. */
+    case SYS_CLOSE:
+      // get_arg(f, arg, 1);
+      break;
+
+    default:
+      break;
+  }
   printf ("system call!\n");
   thread_exit ();
 }
 
-<<<<<<< Updated upstream
-int wait(pid_t pid)
-{
-	return process_wait(pid);
-}
 
+/*
 struct file* process_get_file(int fd)
 {
 	struct thread *t = thread_current();
@@ -94,31 +176,39 @@ int read(int fd, void *buffer,unsigned size)
 	lock_release(&filesys_lock);
 	return bytes;
 }
-		
-=======
+*/
+
 void
 check_ptr(const void *ptr)
 {
   if(ptr == NULL || !is_user_vaddr(ptr) ||
      pagedir_get_page(thread_current()->pagedir, ptr) == NULL)
   {
+    printf ("%s: exit(%d)\n", thread_current()->name, EXIT_FAILURE);
     thread_exit();
   }
 }
 
 void
-check_string(void *string, unsigned len)
+check_string(const void *ptr)
 {
-  void *string_end = string + len - 1;
-  check_ptr(string);
-  check_ptr(string_end);
+  check_ptr(ptr);
+  int i = 1;
+  while(*(char *)(ptr + i) != '/0')
+  {
+    check_ptr(ptr+i);
+    i++;
+  }
+  
 }
 
 void
-check_buffer (void *buffer, unsigned size)
+check_buffer(const void *ptr, unsigned size)
 {
-  void *buffer_end = buffer + size -1;
-  check_ptr(buffer);
-  check_ptr(buffer_end);
+  unsigned i = 0;
+  for(i = 0; i < size; i++)
+  {
+    check_ptr(ptr+i);
+  }
 }
->>>>>>> Stashed changes
+
