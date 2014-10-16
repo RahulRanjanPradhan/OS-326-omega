@@ -3,11 +3,18 @@
 
 #include "threads/synch.h"
 
+#define UNLOAD 0
+#define LOAD_SUCCESS 1
+#define LOAD_FAIL -1
+
+
 struct child_process {
   int pid;
   bool wait;
   bool exit;
   int status;
+  int load;
+  struct semaphore sema;
   struct list_elem elem;
 };
 

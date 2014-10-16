@@ -70,7 +70,13 @@ syscall_handler (struct intr_frame *f)
   case SYS_EXEC:
   {
     check_string(p + 1);
-    f->eax = process_execute(*(char **)(p + 1));
+    // f->eax = process_execute(*(char **)(p + 1));
+    pid_t pid = process_execute(*(char **)(p + 1));
+    struct child_process *cp = get_child_process(pid);
+    if(cp->load == LOAD_SUCCESS)
+      f->eax = pid;
+    else if(cp->load == LOAD_FAIL)
+      f->eax = -1;
     break;
   }
 
@@ -392,8 +398,11 @@ struct child_process *add_child_process (int pid)
 {
   struct child_process *cp = malloc(sizeof(struct child_process));
   cp->pid = pid;
+  // cp->load = UNLOAD;
   // cp->wait = false;
   cp->exit = false;
+  // cp->status = NULL;
+  sema_init(&cp->sema, 0);
   list_push_back(&thread_current()->child_list,
                  &cp->elem);
   return cp;

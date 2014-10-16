@@ -27,7 +27,7 @@ static void args_passing(void **esp);
 
 static char *args[50];        // An array of string to store all the arguments.
 static int argc;              // Count the number of arguments.
-static struct semaphore wait;
+
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -68,11 +68,9 @@ process_execute (const char *cmdline)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, file_name);
-
-  // Make the process_execute wait for new thread.
-  sema_init(&wait, 0);
-  sema_down(&wait);
-
+  struct child_process *cp = get_child_process(tid);
+  sema_down(&cp->sema);
+ 
   if (tid == TID_ERROR)
     palloc_free_page (file_name);
   return tid;
@@ -95,7 +93,14 @@ start_process (void *file_name_)
 
   success = load (file_name, &if_.eip, &if_.esp);
   args_passing(&if_.esp);
-  sema_up(&wait);
+
+  if(success)
+    thread_current()->cp->load = LOAD_SUCCESS;
+  else
+    thread_current()->cp->load = LOAD_FAIL;
+  sema_up(&thread_current()->cp->sema);
+  
+
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
