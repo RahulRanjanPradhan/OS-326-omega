@@ -40,72 +40,115 @@ syscall_handler (struct intr_frame *f)
   check_ptr(p);
   switch(*p)
   {
-  /* Halt the operating system. */
+    /* Halt the operating system. 
+      IN : void
+      OUT: void
+    */
     case SYS_HALT:
       shutdown_power_off();
       break;
     
-    /* Terminate this process. */
+    /* Terminate this process. 
+      IN : int status
+      OUT: void
+    */  
     case SYS_EXIT:
+
       check_ptr(p+1);
       printf ("%s: exit(%d)\n", thread_current()->name, *(int *)p+1);
       thread_exit();
       break;
     
-    /* Start another process. */
+    /* Start another process. 
+      IN : const char *file
+      OUT: pid_t
+    */  
     case SYS_EXEC:
+
       check_string(p+1);
       f->eax = process_execute((char *)(p+1));
       break;
     
-    /* Wait for a child process to die. */
+    /* Wait for a child process to die. 
+      IN : pid_t
+      OUT: int
+    */  
     case SYS_WAIT:
       check_ptr(p+1);
       f->eax = process_wait(*(tid_t *)(p+1));
       break;
     
-    /* Create a file. */
-    case SYS_CREATE:                
+    /* Create a file. 
+      IN :const char *file, unsigned initial_size
+      OUT:bool
+    */
+    case SYS_CREATE:
+      check_ptr(p+1);
+      filesys_create()
       break;
     
-    /* Delete a file. */
+    /* Delete a file. 
+      IN: const char *file
+      OUT: bool
+    */  
     case SYS_REMOVE:
-      // get_arg(f, arg, 1);
+
       break;
     
-    /* Open a file. */
+    /* Open a file. 
+      IN: const char *file
+      OUT: int
+    */
     case SYS_OPEN:          
-      // get_arg(f, arg, 1);
+
       break;       
     
-    /* Obtain a file's size. */
+    /* Obtain a file's size. 
+      IN: int fd
+      OUT: int
+    */
     case SYS_FILESIZE:          
-      // get_arg(f, arg, 1);
+
       break;     
     
-    /* Read from a file. */
+    /* Read from a file. 
+      IN: int fd, void *buffer, unsigned length
+      OUT: int
+    */
     case SYS_READ:            
-      // get_arg(f, arg, 3);
+
       break;    
     
-    /* Write to a file. */  
+    /* Write to a file. 
+      IN: int fd, const void *buffer, unsigned length
+      OUT: int
+    */  
     case SYS_WRITE:            
       // get_arg(f, arg, 3);
       break;     
     
-    /* Change position in a file. */
+    /* Change position in a file. 
+      IN: int fd, unsigned position
+      OUT: void
+    */
     case SYS_SEEK:
-      // get_arg(f, arg, 2);
+
       break;
     
-    /* Report current position in a file. */
+    /* Report current position in a file. 
+      IN: int fd
+      OUT: unsigned
+    */
     case SYS_TELL:
-      // get_arg(f, arg, 1);
+
       break;
     
-    /* Close a file. */
+    /* Close a file. 
+      IN: int fd
+      OUT: void
+    */
     case SYS_CLOSE:
-      // get_arg(f, arg, 1);
+
       break;
 
     default:
