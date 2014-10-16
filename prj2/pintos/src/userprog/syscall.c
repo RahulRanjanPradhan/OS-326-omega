@@ -21,10 +21,7 @@
 
 struct lock filesys_lock;
 static void syscall_handler (struct intr_frame *);
-void check_ptr(const void *);
-void check_string(const void *);
-void check_buffer(const void *, unsigned );
-void exit(int);
+
 
 struct file *process_get_file(int fd);  //return file by file descriptor
 
@@ -129,13 +126,6 @@ syscall_handler (struct intr_frame *f)
   case SYS_OPEN:
   {
     check_string(p + 1);
-    if(*(char**)(p+1)==NULL||*(int *)(p+1)>=PHYS_BASE||
-      pagedir_get_page(thread_current()->pagedir, (const void *)*(p+1)) == NULL)
-    {
-      f->eax = -1;
-      exit(-1);
-    }
-      
     lock_acquire(&filesys_lock);
     struct file *file = filesys_open(*(char**)(p + 1));
     if (file == NULL)
@@ -263,7 +253,7 @@ syscall_handler (struct intr_frame *f)
       {
         //return number of bytes actually written,
         //maybe less than length if end of file is reached.
-        int bytes = file_read(file, buffer, length);
+        int bytes = file_write(file, buffer, length);
         lock_release(&filesys_lock);
         f->eax = bytes;
       }
@@ -366,14 +356,7 @@ check_ptr(const void *ptr)
   if (ptr == NULL || !is_user_vaddr(ptr) ||
       pagedir_get_page(thread_current()->pagedir, ptr) == NULL)
   {
-    printf ("%s: exit(%d)\n", thread_current()->name, -1);
-    struct thread *t = thread_current ();
-    if (thread_alive(t->parent))
-    {
-      t->cp->exit = true;
-      t->cp->status = -1;
-    }
-    thread_exit();
+    exit(-1);
   }
 }
 
@@ -381,13 +364,14 @@ void
 check_string(const void *ptr)
 {
   check_ptr(ptr);
+  check_ptr(*(char **)ptr);
   int i = 1;
   while (*(char *)(ptr + i) != '\0')
   {
-    check_ptr((ptr+i));
+    check_ptr(ptr+i);
+    check_ptr(*(char **)(ptr+i));
     i++;
   }
-
 }
 
 void
@@ -397,8 +381,11 @@ check_buffer(const void *ptr, unsigned size)
   for (i = 0; i < size; i++)
   {
     check_ptr(ptr + i);
+  
   }
 }
+
+
 
 
 struct child_process *add_child_process (int pid)

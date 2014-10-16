@@ -17,11 +17,13 @@ struct file_desc {
   struct list_elem elem;
 };
 
-
-
-
-
 void syscall_init (void);
+
+void check_ptr(const void *);
+void check_string(const void *);
+void check_buffer(const void *, unsigned );
+void check_content(const char **);
+void exit(int);
 
 struct child_process* add_child_process (int);
 struct child_process* get_child_process(int);
