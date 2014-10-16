@@ -5,17 +5,15 @@
 
 struct child_process {
   int pid;
-  int load;
   bool wait;
   bool exit;
   int status;
-  struct lock wait_lock;
   struct list_elem elem;
 };
 
-struct process_file {
-  struct file *file;
+struct file_desc {
   int fd;
+  struct file *file;
   struct list_elem elem;
 };
 
@@ -24,8 +22,11 @@ struct process_file {
 
 
 void syscall_init (void);
+
+struct child_process* add_child_process (int);
 struct child_process* get_child_process(int);
 void remove_child_process(struct child_process *);
+void remove_child_processes (void);
 
 
 #endif /* userprog/syscall.h */

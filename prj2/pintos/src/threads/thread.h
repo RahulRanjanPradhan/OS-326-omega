@@ -121,20 +121,21 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-    
+    /* Used by filesys system call. */
+    struct list file_list;
+    /* Used by wait system call. */
+    struct list child_list;
+    /* Access the child process struct in parent process's child list*/
+    struct child_process *cp;
+    tid_t parent;
+    int fd;
 #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
 
 
-	/*For file system sys call*/
-	struct list file_list;
-	/*For wait sys call*/
-	struct list child_list;
-	tid_t parent;
-	//point to child_process struct in parent's child list
-	struct child_process *cp;
+	
 
   };
 
@@ -189,4 +190,5 @@ void donation_back (struct lock *);
 
 void calc_recent_cpu(struct thread *);
 void calc_load_avg(void);
+bool thread_alive (int pid);
 #endif /* threads/thread.h */

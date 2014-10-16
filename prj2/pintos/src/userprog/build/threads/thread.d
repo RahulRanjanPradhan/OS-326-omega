@@ -6,4 +6,5 @@ threads/thread.o: ../../threads/thread.c ../../threads/thread.h \
  ../../threads/interrupt.h ../../threads/intr-stubs.h \
  ../../threads/palloc.h ../../threads/switch.h ../../threads/vaddr.h \
  ../../threads/loader.h ../../devices/timer.h ../../lib/round.h \
- ../../threads/fixed-point.h ../../userprog/process.h
+ ../../threads/fixed-point.h ../../userprog/process.h \
+ ../../userprog/syscall.h

@@ -14,9 +14,11 @@
 #include "threads/fixed-point.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+#include "userprog/syscall.h"
 #endif
 
 /*  Modified by Wei Fang, Yi Xu, Jie Gao 
+    Prj 1b
     Updated Date: 9/28/2014
     Email: lancefangw@gmail.com
     Pass 27/27 tests
@@ -285,6 +287,9 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
+
+
+  t->cp = add_child_process(tid);
 
   /* Add to run queue. */
   thread_unblock (t);
@@ -589,7 +594,11 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   t->wait_lock = NULL;
   list_init (&t->donation_list);
-
+  list_init (&t->file_list);
+  list_init (&t->child_list);
+  t->fd = 2;  //fd >= 2   0 and 1 are stdio
+  t->cp = NULL;
+  t->parent = -1;
 
   /* init semaphore for sleep to 0 */
   sema_init(&t->sema, 0) ;
@@ -855,6 +864,22 @@ calc_load_avg()
   fixed_point f2 = fp_time_int(fp_divideby_int(int_to_fp(1), 60), 
                               ready_threads);
   load_avg = fp_add_fp(f1, f2);
+}
+
+bool thread_alive (int pid)
+{
+  struct list_elem *e;
+
+  for (e = list_begin (&all_list); e != list_end (&all_list);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, allelem);
+      if (t->tid == pid)
+      {
+        return true;
+      }
+    }
+  return false;
 }
 
 
