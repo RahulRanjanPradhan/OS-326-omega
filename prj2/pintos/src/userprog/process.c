@@ -124,13 +124,15 @@ process_wait (tid_t child_tid)
   struct child_process* cp = get_child_process(child_tid);
   if (!cp)
     {
-      return WAIT_ERROR;
+      return -1;
     }
+  //fail if wait has been called on child.
   if (cp->wait)
     {
-      return WAIT_ERROR;
+      return -1;
     }
   cp->wait = true;
+  //parent must block until child process exists.
   while (!cp->exit)
     {
       barrier();
