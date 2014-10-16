@@ -369,7 +369,6 @@ check_string(const void *ptr)
   while (*(char *)(ptr + i) != '\0')
   {
     check_ptr(ptr+i);
-    check_ptr(*(char **)(ptr+i));
     i++;
   }
 }
@@ -378,10 +377,11 @@ void
 check_buffer(const void *ptr, unsigned size)
 {
   unsigned i = 0;
+  check_ptr(*(char **)ptr);
   for (i = 0; i < size; i++)
   {
     check_ptr(ptr + i);
-  
+    check_ptr(*(char **)ptr);
   }
 }
 
