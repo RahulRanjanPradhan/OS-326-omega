@@ -22,6 +22,7 @@
 #include "threads/palloc.h"
 #include "threads/pte.h"
 #include "threads/thread.h"
+#include "threads/mytest.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #include "userprog/exception.h"
@@ -30,6 +31,11 @@
 #include "userprog/tss.h"
 #else
 #include "tests/threads/tests.h"
+#endif
+#ifdef VM
+#include "vm/page.h"
+#include "vm/swap.h"
+#include "vm/frame.h"
 #endif
 #ifdef FILESYS
 #include "devices/block.h"
@@ -119,7 +125,9 @@ main (void)
   thread_start ();
   serial_init_queue ();
   timer_calibrate ();
-
+#ifdef VM
+	frame_table_init ();
+#endif
 #ifdef FILESYS
   /* Initialize file system. */
   ide_init ();
@@ -128,7 +136,7 @@ main (void)
 #endif
 
   printf ("Boot complete.\n");
-  
+
   /* Run actions specified on kernel command line. */
   run_actions (argv);
 
@@ -292,6 +300,13 @@ run_task (char **argv)
   printf ("Execution of '%s' complete.\n", task);
 }
 
+static void
+hello_cs326 (char **argv)
+{
+  printf ("Hello CS326!!!!!\n");
+  hello_world();
+}
+
 /* Executes all of the actions specified in ARGV[]
    up to the null pointer sentinel. */
 static void
@@ -309,6 +324,7 @@ run_actions (char **argv)
   static const struct action actions[] = 
     {
       {"run", 2, run_task},
+      {"hello", 1, hello_cs326},
 #ifdef FILESYS
       {"ls", 1, fsutil_ls},
       {"cat", 2, fsutil_cat},
@@ -395,6 +411,7 @@ locate_block_devices (void)
   locate_block_device (BLOCK_SCRATCH, scratch_bdev_name);
 #ifdef VM
   locate_block_device (BLOCK_SWAP, swap_bdev_name);
+	swap_init();
 #endif
 }
 

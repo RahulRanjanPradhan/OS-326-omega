@@ -126,6 +126,13 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+		
+	#ifdef VM
+		struct hash spt;										 /* Supppplemental page table. */
+    struct list mmap_list;							 /* List of memory mapped files. */
+    int mapid;													 /* Mapped file id. */
+	#endif
+	
   };
 
 /* Tracks the completion of a process.

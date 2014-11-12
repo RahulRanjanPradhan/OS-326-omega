@@ -28,6 +28,8 @@ static int sys_write (int handle, void *usrc_, unsigned size);
 static int sys_seek (int handle, unsigned position);
 static int sys_tell (int handle);
 static int sys_close (int handle);
+static int sys_mmap (int fd, void *addr);
+static int sys_munmap (int mapid);
  
 static void syscall_handler (struct intr_frame *);
 static void copy_in (void *, const void *, size_t);
@@ -71,6 +73,8 @@ syscall_handler (struct intr_frame *f)
       {2, (syscall_function *) sys_seek},
       {1, (syscall_function *) sys_tell},
       {1, (syscall_function *) sys_close},
+			{2, (syscall_function *) sys_mmap},
+			{1, (syscall_function *) sys_munmap},
     };
 
   const struct syscall *sc;
