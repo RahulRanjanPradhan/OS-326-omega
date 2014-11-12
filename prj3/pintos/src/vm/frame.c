@@ -1,4 +1,10 @@
 #include "vm/frame.h"
+#include "vm/swap.h"
+#include "filesys/file.h"
+#include "threads/malloc.h"
+#include "userprog/pagedir.h"
+#include "userprog/syscall.h"
+
 
 static struct hash frame_table;
 static struct lock frame_table_lock;

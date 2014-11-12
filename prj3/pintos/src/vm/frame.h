@@ -1,6 +1,7 @@
 #include <hash.h>
 #include "threads/synch.h"
 #include "threads/palloc.h"
+#include "vm/page.h"
 
 
 
