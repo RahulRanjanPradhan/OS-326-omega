@@ -162,7 +162,7 @@ page_fault (struct intr_frame *f)
 	else if (not_present && is_user_vaddr(fault_addr))
 	{
 		struct spt_entry *spte = get_spte(fault_addr);
-		if (spte)
+		if (spte && spte->in_memory == false)
 		{
 			success = load_page(spte);
 			spte->locked = false;

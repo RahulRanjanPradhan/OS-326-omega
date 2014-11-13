@@ -36,7 +36,7 @@ static void syscall_handler (struct intr_frame *);
 static void copy_in (void *, const void *, size_t);
 static bool add_mmap_to_pt(struct file *, int32_t, uint8_t *,
                            uint32_t , uint32_t );
-
+static void *esp;
 
 void
 syscall_init (void)
@@ -82,6 +82,7 @@ syscall_handler (struct intr_frame *f)
   unsigned call_nr;
   int args[3];
 
+  esp = f->esp;
   /* Get the system call. */
   copy_in (&call_nr, f->esp, sizeof call_nr);
   if (call_nr >= sizeof syscall_table / sizeof * syscall_table)
@@ -96,6 +97,13 @@ syscall_handler (struct intr_frame *f)
   /* Execute the system call,
      and set the return value. */
   f->eax = sc->func (args[0], args[1], args[2]);
+
+  /* Unlock the page used by f->esp. */
+  struct spt_entry *spte = get_spte(f->esp);
+  if (spte)
+  {
+    spte->locked = false;
+  }
 }
 
 /* Returns true if UADDR is a valid, mapped user address,
@@ -103,8 +111,23 @@ syscall_handler (struct intr_frame *f)
 static bool
 verify_user (const void *uaddr)
 {
-  return (uaddr < PHYS_BASE
-          && pagedir_get_page (thread_current ()->pagedir, uaddr) != NULL);
+  bool user = false;
+  if (!is_user_vaddr(uaddr) || uaddr < USER_VADDR_BOTTOM)
+  {
+    return user;
+  }
+  
+  struct spt_entry *spte = get_spte((void *) uaddr);
+  if (spte)
+  {
+    load_page(spte);
+    user = spte->in_memory;
+  }
+  else if (uaddr >= esp - 32)
+  {
+    user = grow_stack((void *) uaddr);
+  }
+  return user;
 }
 
 /* Copies a byte from user address USRC to kernel address DST.
@@ -141,8 +164,26 @@ copy_in (void *dst_, const void *usrc_, size_t size)
   const uint8_t *usrc = usrc_;
 
   for (; size > 0; size--, dst++, usrc++)
+  {
+    if (!is_user_vaddr(usrc) || usrc < USER_VADDR_BOTTOM)
+    {
+      thread_exit ();
+    }
+    bool load = false;
+    struct spt_entry *spte = get_spte((void *) usrc);
+    if (spte)
+    {
+      load_page(spte);
+      load = spte->in_memory;
+    }
+    else if (usrc >= esp - 32)
+    {
+      load = grow_stack((void *) usrc);
+    }
     if (usrc >= (uint8_t *) PHYS_BASE || !get_user (dst, usrc))
       thread_exit ();
+  }
+
 }
 
 /* Creates a copy of user string US in kernel memory
@@ -584,12 +625,12 @@ sys_munmap (int mapid)
       list_remove(&mf->elem);
       if (mf->mapid != close)
       {
-        // if (f)
-        // {
-        //   lock_acquire(&fs_lock);
-        //   file_close(f);
-        //   lock_release(&fs_lock);
-        // }
+        if (f)
+        {
+          lock_acquire(&fs_lock);
+          file_close(f);
+          lock_release(&fs_lock);
+        }
         close = mf->mapid;
         f = mf->spte->file;
       }
@@ -598,12 +639,12 @@ sys_munmap (int mapid)
     }
     e = next;
   }
-  // if (f)
-  // {
-  //   lock_acquire(&fs_lock);
-  //   file_close(f);
-  //   lock_release(&fs_lock);
-  // }
+  if (f)
+  {
+    lock_acquire(&fs_lock);
+    file_close(f);
+    lock_release(&fs_lock);
+  }
   return 0;
 }
 
