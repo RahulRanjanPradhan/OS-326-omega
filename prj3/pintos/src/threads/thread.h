@@ -1,12 +1,14 @@
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
 
+#include <hash.h>
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
 #include "threads/synch.h"
 #include "threads/fixed-point.h"
 #include "threads/synch.h"
+
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -128,9 +130,9 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
 		
 	#ifdef VM
-		struct hash spt;										 /* Supppplemental page table. */
-    struct list mmap_list;							 /* List of memory mapped files. */
-    int mapid;													 /* Mapped file id. */
+		struct hash spt;										/* Supppplemental page table. */
+    struct list mmaps;							    /* List of memory mapped files. */
+    int mapid;													/* Mapped file id. */
 	#endif
 	
   };

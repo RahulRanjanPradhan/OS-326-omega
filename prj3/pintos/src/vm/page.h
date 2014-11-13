@@ -12,7 +12,7 @@ enum MEM_TYPE
 	FILE,
 	MMAP,
 	SWAP,
-	ERROR
+	HASH_FAIL
 };
 
 struct spt_entry		//Supplemental page table entry

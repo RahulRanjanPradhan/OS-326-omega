@@ -614,6 +614,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->wait_status = NULL;
   list_init (&t->fds);
   t->next_handle = 2;  
+  list_init(&t->mmaps);
+  t->mapid = 0;
+  
   t->magic = THREAD_MAGIC;
   sema_init (&t->timer_sema, 0);
   list_init (&t->donors);
@@ -621,6 +624,8 @@ init_thread (struct thread *t, const char *name, int priority)
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
+
+  
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

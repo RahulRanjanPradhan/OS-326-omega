@@ -22,7 +22,6 @@
 #include "threads/palloc.h"
 #include "threads/pte.h"
 #include "threads/thread.h"
-#include "threads/mytest.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #include "userprog/exception.h"
@@ -300,12 +299,7 @@ run_task (char **argv)
   printf ("Execution of '%s' complete.\n", task);
 }
 
-static void
-hello_cs326 (char **argv)
-{
-  printf ("Hello CS326!!!!!\n");
-  hello_world();
-}
+
 
 /* Executes all of the actions specified in ARGV[]
    up to the null pointer sentinel. */
@@ -324,7 +318,6 @@ run_actions (char **argv)
   static const struct action actions[] = 
     {
       {"run", 2, run_task},
-      {"hello", 1, hello_cs326},
 #ifdef FILESYS
       {"ls", 1, fsutil_ls},
       {"cat", 2, fsutil_cat},
