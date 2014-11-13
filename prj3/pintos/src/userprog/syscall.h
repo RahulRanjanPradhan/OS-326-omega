@@ -10,4 +10,6 @@ struct lock fs_lock;
 void syscall_init (void);
 void syscall_exit (void);
 
+int sys_munmap (int mapid);
+
 #endif /* userprog/syscall.h */

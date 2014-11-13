@@ -6,14 +6,16 @@
 #include "userprog/syscall.h"
 #include "threads/thread.h"
 
+/* Global frame table. */
 static struct hash frame_table;
+/* Frame table lock. */
 static struct lock frame_table_lock;
 
 /* Returns a hash value for frame f. */
 static unsigned frame_hash (const struct hash_elem *f_, void *aux UNUSED)
 {
   const struct frame_entry *f = hash_entry (f_, struct frame_entry, hash_elem);
-  return hash_bytes (&f->frame, sizeof f->frame);
+  return hash_int ((int)f->frame);
 }
 
 /* Returns true if frame a precedes frame b. */

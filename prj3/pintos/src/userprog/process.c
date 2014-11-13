@@ -19,6 +19,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "vm/frame.h"
+#include "userprog/syscall.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmd_line, void (**eip) (void), void **esp);
@@ -173,6 +174,7 @@ process_exit (void)
   /* Close executable (and allow writes). */
   file_close (cur->bin_file);
 
+  sys_munmap(CLOSE_ALL);
   page_table_destroy(&cur->spt);
   
   /* Notify parent that we're dead. */

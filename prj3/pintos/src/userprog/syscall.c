@@ -30,7 +30,7 @@ static int sys_seek (int handle, unsigned position);
 static int sys_tell (int handle);
 static int sys_close (int handle);
 static int sys_mmap (int handle, void *addr);
-static int sys_munmap (int mapid);
+
 
 static void syscall_handler (struct intr_frame *);
 static void copy_in (void *, const void *, size_t);
@@ -505,7 +505,7 @@ sys_mmap (int handle, void *addr)
 
 }
 
-static int
+int
 sys_munmap (int mapid)
 {
   struct thread *t = thread_current();
@@ -539,12 +539,12 @@ sys_munmap (int mapid)
       list_remove(&mf->elem);
       if (mf->mapid != close)
       {
-        if (f)
-        {
-          lock_acquire(&fs_lock);
-          file_close(f);
-          lock_release(&fs_lock);
-        }
+        // if (f)
+        // {
+        //   lock_acquire(&fs_lock);
+        //   file_close(f);
+        //   lock_release(&fs_lock);
+        // }
         close = mf->mapid;
         f = mf->spte->file;
       }
@@ -553,12 +553,12 @@ sys_munmap (int mapid)
     }
     e = next;
   }
-  if (f)
-  {
-    lock_acquire(&fs_lock);
-    file_close(f);
-    lock_release(&fs_lock);
-  }
+  // if (f)
+  // {
+  //   lock_acquire(&fs_lock);
+  //   file_close(f);
+  //   lock_release(&fs_lock);
+  // }
   return 0;
 }
 
@@ -580,5 +580,5 @@ syscall_exit (void)
     free (fd);
   }
 
-  sys_munmap(CLOSE_ALL);
+  
 }

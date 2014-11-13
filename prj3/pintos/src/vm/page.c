@@ -13,12 +13,14 @@
 #include "vm/page.h"
 #include "vm/swap.h"
 
+// Hash func for supplemental page hash table.
 static unsigned page_hash_func (const struct hash_elem *e, void *aux UNUSED)
 {
   struct spt_entry *spte = hash_entry(e, struct spt_entry, elem);
   return hash_int((int) spte->vaddr);
 }
 
+// Comparator func for supplemental page hash table.
 static bool page_less_func (const struct hash_elem *a,
                             const struct hash_elem *b,
                             void *aux UNUSED)
@@ -32,6 +34,7 @@ static bool page_less_func (const struct hash_elem *a,
   return false;
 }
 
+// Func for hash destroy.
 static void page_destroy_action (struct hash_elem *e, void *aux UNUSED)
 {
   struct spt_entry *spte = hash_entry(e, struct spt_entry,
@@ -44,18 +47,19 @@ static void page_destroy_action (struct hash_elem *e, void *aux UNUSED)
   free(spte);
 }
 
+// Initialize supplemental page hash table.
 void page_table_init (struct hash *spt)
 {
   hash_init (spt, page_hash_func, page_less_func, NULL);
 }
 
+// Destroy supplemental page hash table
 void page_table_destroy (struct hash *spt)
 {
   hash_destroy (spt, page_destroy_action);
 }
 
-
-
+// From vaddr get spte in this thread
 struct spt_entry *get_spte (void *vaddr)
 {
   struct spt_entry spte;
@@ -69,6 +73,7 @@ struct spt_entry *get_spte (void *vaddr)
   return hash_entry (e, struct spt_entry, elem);
 }
 
+// Load page from file/mmap/swap to memory.
 bool load_page (struct spt_entry *spte)
 {
   bool success = false;
@@ -91,23 +96,7 @@ bool load_page (struct spt_entry *spte)
   return success;
 }
 
-bool load_swap (struct spt_entry *spte)
-{
-  uint8_t *frame = frame_alloc (PAL_USER, spte);
-  if (!frame)
-  {
-    return false;
-  }
-  if (!install_page(spte->vaddr, frame, spte->writable))
-  {
-    frame_free(frame);
-    return false;
-  }
-  swap_in(spte->swap_index, spte->vaddr);
-  spte->in_memory = true;
-  return true;
-}
-
+// Load page from file/mmap to memory.
 bool load_file (struct spt_entry *spte)
 {
   enum palloc_flags flags = PAL_USER;
@@ -145,6 +134,25 @@ bool load_file (struct spt_entry *spte)
   return true;
 }
 
+// Load page from swap to memory.
+bool load_swap (struct spt_entry *spte)
+{
+  uint8_t *frame = frame_alloc (PAL_USER, spte);
+  if (!frame)
+  {
+    return false;
+  }
+  if (!install_page(spte->vaddr, frame, spte->writable))
+  {
+    frame_free(frame);
+    return false;
+  }
+  swap_in(spte->swap_index, spte->vaddr);
+  spte->in_memory = true;
+  return true;
+}
+
+// Add a file to supplemental page hash table of the current thread.
 bool add_file_to_pt (struct file *file, int32_t ofs, uint8_t *upage,
                      uint32_t read_bytes, uint32_t zero_bytes,
                      bool writable)
@@ -172,6 +180,8 @@ bool add_file_to_pt (struct file *file, int32_t ofs, uint8_t *upage,
   return true;
 }
 
+// Add a mmap to supplemental page hash table 
+//  and mmaps of the current thread.
 bool add_mmap_to_pt(struct file *file, int32_t ofs, uint8_t *upage,
                     uint32_t read_bytes, uint32_t zero_bytes)
 {
@@ -212,6 +222,7 @@ bool add_mmap_to_pt(struct file *file, int32_t ofs, uint8_t *upage,
   return true;
 }
 
+// Grow stack if needed.
 bool grow_stack (void *vaddr)
 {
   if ( (size_t) (PHYS_BASE - pg_round_down(vaddr)) > MAX_STACK_SIZE)
