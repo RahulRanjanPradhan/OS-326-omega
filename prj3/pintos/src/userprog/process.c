@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <hash.h>
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
 #include "userprog/tss.h"
@@ -34,6 +35,11 @@ struct exec_info
   struct wait_status *wait_status;    /* Child process. */
   bool success;                       /* Program successfully loaded? */
 };
+
+static 
+bool add_file_to_pt (struct file *file, int32_t ofs, uint8_t *upage,
+                     uint32_t read_bytes, uint32_t zero_bytes,
+                     bool writable);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -672,4 +678,74 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+// Add a file to supplemental page hash table of the current thread.
+static 
+bool add_file_to_pt (struct file *file, int32_t ofs, uint8_t *upage,
+                     uint32_t read_bytes, uint32_t zero_bytes,
+                     bool writable)
+{
+  struct spt_entry *spte = malloc(sizeof(struct spt_entry));
+  if (!spte)
+  {
+    return false;
+  }
+  spte->file = file;
+  spte->offset = ofs;
+  spte->vaddr = upage;
+  spte->read_bytes = read_bytes;
+  spte->zero_bytes = zero_bytes;
+  spte->writable = writable;
+  spte->in_memory = false;
+  spte->type = FILE;
+  spte->locked = false;
+
+  if (hash_insert(&thread_current()->spt, &spte->elem))
+  {
+    spte->type = HASH_FAIL;
+    return false;
+  }
+  return true;
+}
+
+
+// Grow stack if needed.
+bool grow_stack (void *vaddr)
+{
+  if ( (size_t) (PHYS_BASE - pg_round_down(vaddr)) > MAX_STACK_SIZE)
+  {
+    return false;
+  }
+  struct spt_entry *spte = malloc(sizeof(struct spt_entry));
+  if (!spte)
+  {
+    return false;
+  }
+  spte->vaddr = pg_round_down(vaddr);
+  spte->in_memory = true;
+  spte->writable = true;
+  spte->type = SWAP;
+  spte->locked = true;
+
+  uint8_t *frame = frame_alloc (PAL_USER, spte);
+  if (!frame)
+  {
+    free(spte);
+    return false;
+  }
+
+  if (!install_page(spte->vaddr, frame, spte->writable))
+  {
+    free(spte);
+    frame_free(frame);
+    return false;
+  }
+
+  if (intr_context())
+  {
+    spte->locked = false;
+  }
+
+  return (hash_insert(&thread_current()->spt, &spte->elem) == NULL);
 }

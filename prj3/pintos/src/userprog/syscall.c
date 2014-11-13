@@ -34,7 +34,8 @@ static int sys_mmap (int handle, void *addr);
 
 static void syscall_handler (struct intr_frame *);
 static void copy_in (void *, const void *, size_t);
-
+static bool add_mmap_to_pt(struct file *, int32_t, uint8_t *,
+                           uint32_t , uint32_t );
 
 
 void
@@ -505,6 +506,50 @@ sys_mmap (int handle, void *addr)
 
 }
 
+
+// Add a mmap to supplemental page hash table
+//  and mmaps of the current thread.
+static
+bool add_mmap_to_pt(struct file *file, int32_t ofs, uint8_t *upage,
+                    uint32_t read_bytes, uint32_t zero_bytes)
+{
+  struct spt_entry *spte = malloc(sizeof(struct spt_entry));
+  if (!spte)
+  {
+    return false;
+  }
+  spte->file = file;
+  spte->offset = ofs;
+  spte->vaddr = upage;
+  spte->read_bytes = read_bytes;
+  spte->zero_bytes = zero_bytes;
+  spte->in_memory = false;
+  spte->type = MMAP;
+  spte->writable = true;
+  spte->locked = false;
+
+  struct mmap_file *mf = malloc(sizeof(struct mmap_file));
+  if (mf)
+  {
+    mf->spte = spte;
+    mf->mapid = thread_current()->mapid;
+    list_push_back(&thread_current()->mmaps, &mf->elem);
+  }
+  else
+  {
+    free(spte);
+    return false;
+  }
+
+  // Return old equal elem in spt. So old should be null.
+  if (hash_insert(&thread_current()->spt, &spte->elem))
+  {
+    spte->type = HASH_FAIL;
+    return false;
+  }
+  return true;
+}
+
 int
 sys_munmap (int mapid)
 {
@@ -580,5 +625,5 @@ syscall_exit (void)
     free (fd);
   }
 
-  
+
 }

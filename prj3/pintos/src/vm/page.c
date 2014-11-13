@@ -76,188 +76,71 @@ struct spt_entry *get_spte (void *vaddr)
 // Load page from file/mmap/swap to memory.
 bool load_page (struct spt_entry *spte)
 {
-  bool success = false;
   spte->locked = true;
   if (spte->in_memory)
   {
-    return success;
+    return false;
   }
   switch (spte->type)
   {
   case FILE:
   case MMAP:
-    success = load_file(spte);
-    break;
-  case SWAP:
-    success = load_swap(spte);
-  default:
-    break;
-  }
-  return success;
-}
-
-// Load page from file/mmap to memory.
-bool load_file (struct spt_entry *spte)
-{
-  enum palloc_flags flags = PAL_USER;
-  if (spte->read_bytes == 0)
   {
-    flags |= PAL_ZERO;
-  }
-  uint8_t *frame = frame_alloc(flags, spte);
-  if (!frame)
-  {
-    return false;
-  }
-  if (spte->read_bytes > 0)
-  {
-    lock_acquire(&fs_lock);
-    if ((int) spte->read_bytes != file_read_at(spte->file, frame,
-        spte->read_bytes,
-        spte->offset))
+    enum palloc_flags flags = PAL_USER;
+    if (spte->read_bytes == 0)
     {
+      flags |= PAL_ZERO;
+    }
+    uint8_t *frame = frame_alloc(flags, spte);
+    if (!frame)
+    {
+      return false;
+    }
+    if (spte->read_bytes > 0)
+    {
+      lock_acquire(&fs_lock);
+      if ((int) spte->read_bytes != file_read_at(spte->file, frame,
+          spte->read_bytes,
+          spte->offset))
+      {
+        lock_release(&fs_lock);
+        frame_free(frame);
+        return false;
+      }
       lock_release(&fs_lock);
+      memset(frame + spte->read_bytes, 0, spte->zero_bytes);
+    }
+
+    if (!install_page(spte->vaddr, frame, spte->writable))
+    {
       frame_free(frame);
       return false;
     }
-    lock_release(&fs_lock);
-    memset(frame + spte->read_bytes, 0, spte->zero_bytes);
+
+    spte->in_memory = true;
+    return true;
+    break;
   }
 
-  if (!install_page(spte->vaddr, frame, spte->writable))
+  case SWAP:
   {
-    frame_free(frame);
-    return false;
+    uint8_t *frame = frame_alloc (PAL_USER, spte);
+    if (!frame)
+    {
+      return false;
+    }
+    if (!install_page(spte->vaddr, frame, spte->writable))
+    {
+      frame_free(frame);
+      return false;
+    }
+    swap_in(spte->swap_index, spte->vaddr);
+    spte->in_memory = true;
+    return true;
   }
-
-  spte->in_memory = true;
-  return true;
+  default:
+    break;
+  }
+  return false;
 }
 
-// Load page from swap to memory.
-bool load_swap (struct spt_entry *spte)
-{
-  uint8_t *frame = frame_alloc (PAL_USER, spte);
-  if (!frame)
-  {
-    return false;
-  }
-  if (!install_page(spte->vaddr, frame, spte->writable))
-  {
-    frame_free(frame);
-    return false;
-  }
-  swap_in(spte->swap_index, spte->vaddr);
-  spte->in_memory = true;
-  return true;
-}
-
-// Add a file to supplemental page hash table of the current thread.
-bool add_file_to_pt (struct file *file, int32_t ofs, uint8_t *upage,
-                     uint32_t read_bytes, uint32_t zero_bytes,
-                     bool writable)
-{
-  struct spt_entry *spte = malloc(sizeof(struct spt_entry));
-  if (!spte)
-  {
-    return false;
-  }
-  spte->file = file;
-  spte->offset = ofs;
-  spte->vaddr = upage;
-  spte->read_bytes = read_bytes;
-  spte->zero_bytes = zero_bytes;
-  spte->writable = writable;
-  spte->in_memory = false;
-  spte->type = FILE;
-  spte->locked = false;
-
-  if (hash_insert(&thread_current()->spt, &spte->elem))
-  {
-    spte->type = HASH_FAIL;
-    return false;
-  }
-  return true;
-}
-
-// Add a mmap to supplemental page hash table 
-//  and mmaps of the current thread.
-bool add_mmap_to_pt(struct file *file, int32_t ofs, uint8_t *upage,
-                    uint32_t read_bytes, uint32_t zero_bytes)
-{
-  struct spt_entry *spte = malloc(sizeof(struct spt_entry));
-  if (!spte)
-  {
-    return false;
-  }
-  spte->file = file;
-  spte->offset = ofs;
-  spte->vaddr = upage;
-  spte->read_bytes = read_bytes;
-  spte->zero_bytes = zero_bytes;
-  spte->in_memory = false;
-  spte->type = MMAP;
-  spte->writable = true;
-  spte->locked = false;
-
-  struct mmap_file *mf = malloc(sizeof(struct mmap_file));
-  if (mf)
-  {
-    mf->spte = spte;
-    mf->mapid = thread_current()->mapid;
-    list_push_back(&thread_current()->mmaps, &mf->elem);
-  }
-  else
-  {
-    free(spte);
-    return false;
-  }
-
-  // Return old equal elem in spt. So old should be null.
-  if (hash_insert(&thread_current()->spt, &spte->elem))
-  {
-    spte->type = HASH_FAIL;
-    return false;
-  }
-  return true;
-}
-
-// Grow stack if needed.
-bool grow_stack (void *vaddr)
-{
-  if ( (size_t) (PHYS_BASE - pg_round_down(vaddr)) > MAX_STACK_SIZE)
-  {
-    return false;
-  }
-  struct spt_entry *spte = malloc(sizeof(struct spt_entry));
-  if (!spte)
-  {
-    return false;
-  }
-  spte->vaddr = pg_round_down(vaddr);
-  spte->in_memory = true;
-  spte->writable = true;
-  spte->type = SWAP;
-  spte->locked = true;
-
-  uint8_t *frame = frame_alloc (PAL_USER, spte);
-  if (!frame)
-  {
-    free(spte);
-    return false;
-  }
-
-  if (!install_page(spte->vaddr, frame, spte->writable))
-  {
-    free(spte);
-    frame_free(frame);
-    return false;
-  }
-
-  if (intr_context())
-  {
-    spte->locked = false;
-  }
-
-  return (hash_insert(&thread_current()->spt, &spte->elem) == NULL);
-}
