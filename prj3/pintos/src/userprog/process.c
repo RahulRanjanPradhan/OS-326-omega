@@ -601,18 +601,54 @@ init_cmd_line (uint8_t *kpage, uint8_t *upage, const char *cmd_line,
 static bool
 setup_stack (const char *cmd_line, void **esp)
 {
-  uint8_t *kpage;
   bool success = false;
 
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-  if (kpage != NULL)
+  //setup the first stack using grow_stack approach
+  uint8_t *upage = ((uint8_t *) PHYS_BASE) - PGSIZE;
+  if ( (size_t) (PHYS_BASE - pg_round_down(upage)) > MAX_STACK_SIZE)
   {
-    uint8_t *upage = ((uint8_t *) PHYS_BASE) - PGSIZE;
-    if (install_page (upage, kpage, true))
-      success = init_cmd_line (kpage, upage, cmd_line, esp);
-    else
-      palloc_free_page (kpage);
+    return false;
   }
+  struct spt_entry *spte = malloc(sizeof(struct spt_entry));
+  if (!spte)
+  {
+    return false;
+  }
+  spte->vaddr = pg_round_down(upage);
+  spte->in_memory = true;
+  spte->writable = true;
+  spte->type = SWAP;
+  spte->locked = true;
+
+  uint8_t *frame = frame_alloc (PAL_USER, spte);
+  if (!frame)
+  {
+    free(spte);
+    return false;
+  }
+
+  if (!install_page(spte->vaddr, frame, spte->writable))
+  {
+    free(spte);
+    frame_free(frame);
+    return false;
+  }
+
+  if (intr_context())
+  {
+    spte->locked = false;
+  }
+
+  if (hash_insert(&thread_current()->spt, &spte->elem) != NULL)
+  {
+    palloc_free_page (frame);
+    return false;
+  }
+
+  success = init_cmd_line (frame, upage, cmd_line, esp);
+
+    
+  
   return success;
 }
 

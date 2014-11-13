@@ -27,11 +27,11 @@ static bool frame_less (const struct hash_elem *a_, const struct hash_elem *b_,
 }
 
 /* Initialize frame table to compute hash values using frame_hash and
-   compare hash elements using frame_hash. */
+   compare hash elements using frame_less. */
 void frame_table_init (void)
 {
   lock_init(&frame_table_lock);
-  hash_init (&frame_table, frame_hash, frame_hash, NULL);
+  hash_init (&frame_table, frame_hash, frame_less, NULL);
 }
 
 /* Allocate a frame for a page, if frame table is full, evict one.

@@ -473,21 +473,25 @@ sys_close (int handle)
 static int
 sys_mmap (int handle, void *addr)
 {
-  // Get fd->file
-  struct file_descriptor *fd = lookup_fd(handle);
-  if (!fd->file || verify_user(addr) || file_length(fd->file) == 0)
+  struct file *old_file = lookup_fd(handle)->file;
+  if (!old_file || !is_user_vaddr(addr) || addr < USER_VADDR_BOTTOM ||
+      ((uint32_t) addr % PGSIZE) != 0)
   {
     return -1;
   }
-
+  struct file *file = file_reopen(old_file);
+  if (!file || file_length(old_file) == 0)
+  {
+    return -1;
+  }
   thread_current()->mapid++;
   int32_t ofs = 0;
-  uint32_t read_bytes = file_length(fd->file);
+  uint32_t read_bytes = file_length(file);
   while (read_bytes > 0)
   {
     uint32_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
     uint32_t page_zero_bytes = PGSIZE - page_read_bytes;
-    if (!add_mmap_to_pt(fd->file, ofs,
+    if (!add_mmap_to_pt(file, ofs,
                         addr, page_read_bytes, page_zero_bytes))
     {
       sys_munmap(thread_current()->mapid);
@@ -498,6 +502,7 @@ sys_mmap (int handle, void *addr)
     addr += PGSIZE;
   }
   return thread_current()->mapid;
+
 }
 
 static int
