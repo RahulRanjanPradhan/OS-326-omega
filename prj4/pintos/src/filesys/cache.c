@@ -50,6 +50,7 @@ cache_get(block_sector_t sector, bool dirty)
     cb->dirty = dirty;
     block_read(fs_device, cb->sector_no, &cb->data);
   }
+  //cache_read_ahead(sector);  //failed to read ahead
   return cb;
 }
 

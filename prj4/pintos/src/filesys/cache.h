@@ -24,7 +24,6 @@ struct cache_block
   bool dirty;                       // If written or not
 
   char data[BLOCK_SECTOR_SIZE];     // Cache data
-  struct lock cache_lock;           // Lock for this cache block
   struct list_elem elem;            // Inserted in cache_list
 };
 

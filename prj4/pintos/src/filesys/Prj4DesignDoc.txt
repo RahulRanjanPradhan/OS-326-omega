@@ -39,6 +39,9 @@ http://courses.cs.vt.edu/cs3204/spring2007/pintos/Project4SessionSpring2007.pdf
 >> A2: What is the maximum size of a file supported by your inode
 >> structure?  Show your work.
 
+(9*512 + 4*128*512 + 128*128*512)/1024/1024 = 8.25 MB
+
+
 ---- SYNCHRONIZATION ----
 
 >> A3: Explain how your code avoids a race if two processes attempt to
@@ -135,7 +138,7 @@ Yes. My inode structure has three levels: direct
 
                  RESULT
                  ======
-                 
+
 pass tests/userprog/args-none
 pass tests/userprog/args-single
 pass tests/userprog/args-multiple
