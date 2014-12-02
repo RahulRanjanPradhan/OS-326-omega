@@ -15,8 +15,14 @@
 /* Partition that contains the file system. */
 struct block *fs_device;
 
+
 struct dir *get_containing_dir (const char *path);
 char *get_filename (const char *path);
+
+/* Helping methods*/
+struct dir* get_containing_dir (const char* path);
+char* get_filename (const char* path);
+
 static void do_format (void);
 
 /* Initializes the file system module.
@@ -55,8 +61,14 @@ bool
 filesys_create (const char *name, off_t initial_size, bool isdir)
 {
   block_sector_t inode_sector = 0;
+  // Get directory
   struct dir *dir = get_containing_dir(name);
+
   char *file_name = get_filename(name);
+
+  // Get file name
+  char* file_name = get_filename(name);
+
   bool success = false;
   if (strcmp(file_name, ".") != 0 && strcmp(file_name, "..") != 0)
   {
@@ -82,17 +94,28 @@ struct file *
 filesys_open (const char *name)
 {
   if (strlen(name) == 0)
+
   {
     return NULL;
   }
   struct dir *dir = get_containing_dir(name);
   char *file_name = get_filename(name);
+
+    {
+      return NULL;
+    }
+  // Get directory
+  struct dir* dir = get_containing_dir(name);
+  // Get file name
+  char* file_name = get_filename(name);
+
   struct inode *inode = NULL;
 
   if (dir != NULL)
   {
     if (strcmp(file_name, "..") == 0)
     {
+
       if (!dir_get_parent(dir, &inode))
       {
         free(file_name);
@@ -108,6 +131,28 @@ filesys_open (const char *name)
     else
     {
       dir_lookup (dir, file_name, &inode);
+
+    // Case for such file: a/b/..
+      if (strcmp(file_name, "..") == 0)
+  {
+    if (!dir_get_parent(dir, &inode))
+      {
+        free(file_name);
+        return NULL;
+      }
+  }
+    // Case for such file:/a/b/ or /a/b/.
+      else if ((dir_is_root(dir) && strlen(file_name) == 0) ||
+         strcmp(file_name, ".") == 0)
+  {
+    free(file_name);
+    return (struct file *) dir;
+  }
+      else
+  {
+    dir_lookup (dir, file_name, &inode);
+  }
+
     }
   }
 
@@ -133,8 +178,15 @@ filesys_open (const char *name)
 bool
 filesys_remove (const char *name)
 {
+
   struct dir *dir = get_containing_dir(name);
   char *file_name = get_filename(name);
+
+  // Get dir
+  struct dir* dir = get_containing_dir(name);
+  // Get file name
+  char* file_name = get_filename(name);
+
   bool success = dir != NULL && dir_remove (dir, file_name);
   dir_close (dir);
   free(file_name);
@@ -154,7 +206,12 @@ do_format (void)
   printf ("done.\n");
 }
 
+
 bool filesys_chdir (const char *name)
+
+/* Method used to change directory. Return if success, else return false.*/
+bool filesys_chdir (const char* name)
+
 {
   struct dir *dir = get_containing_dir(name);
   char *file_name = get_filename(name);
@@ -164,11 +221,35 @@ bool filesys_chdir (const char *name)
   {
     if (strcmp(file_name, "..") == 0)
     {
+
       if (!dir_get_parent(dir, &inode))
       {
         free(file_name);
         return false;
       }
+
+    // Case for such file: /a/b/..
+      if (strcmp(file_name, "..") == 0)
+  {
+    if (!dir_get_parent(dir, &inode))
+      {
+        free(file_name);
+        return false;
+      }
+  }
+    // Case for such file:/a/b/ or /a/b/.
+      else if ((dir_is_root(dir) && strlen(file_name) == 0) ||
+    strcmp(file_name, ".") == 0)
+  {
+    thread_current()->cwd = dir;
+    free(file_name);
+    return true;
+  }
+      else
+  {
+    dir_lookup (dir, file_name, &inode);
+  }
+
     }
     else if ((dir_is_root(dir) && strlen(file_name) == 0) ||
              strcmp(file_name, ".") == 0)
@@ -187,6 +268,7 @@ bool filesys_chdir (const char *name)
   free(file_name);
 
   dir = dir_open (inode);
+  // Change dir
   if (dir)
   {
     dir_close(thread_current()->cwd);
@@ -196,22 +278,39 @@ bool filesys_chdir (const char *name)
   return false;
 }
 
+
 struct dir *get_containing_dir (const char *path)
+
+/* Method to search for struct dir by given path. 
+   If it exists, return it. Otherwise, return Null. */
+struct dir* get_containing_dir (const char* path)
+
 {
   char s[strlen(path) + 1];
   memcpy(s, path, strlen(path) + 1);
 
   char *save_ptr, *next_token = NULL, *token = strtok_r(s, "/", &save_ptr);
+
   struct dir *dir;
   if (s[0] == ASCII_SLASH || !thread_current()->cwd)
   {
     dir = dir_open_root();
   }
+
+  struct dir* dir;
+  // Case for absolute path
+  if (s[0] == ASCII_SLASH || !thread_current()->cwd)
+    {
+      dir = dir_open_root();
+    }
+  // Case for relative path
+
   else
   {
     dir = dir_reopen(thread_current()->cwd);
   }
 
+ // Find dir
   if (token)
   {
     next_token = strtok_r(NULL, "/", &save_ptr);
@@ -251,12 +350,18 @@ struct dir *get_containing_dir (const char *path)
   return dir;
 }
 
+
 char *get_filename (const char *path)
+
+/* Method get the file name given a path.*/
+char* get_filename (const char* path)
+
 {
   char s[strlen(path) + 1];
   memcpy(s, path, strlen(path) + 1);
 
   char *token, *save_ptr, *prev_token = "";
+  // Go through the path and get file name.
   for (token = strtok_r(s, "/", &save_ptr); token != NULL;
        token = strtok_r (NULL, "/", &save_ptr))
   {
