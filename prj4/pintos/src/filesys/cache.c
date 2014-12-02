@@ -2,155 +2,158 @@
 #include "filesys/filesys.h"
 #include "threads/malloc.h"
 #include "threads/thread.h"
-#include "lib/debug.h"
 
-struct list cache_list;
-struct lock evict_lock;
-
-struct cache_block *
-in_cache (block_sector_t sector)
+void filesys_cache_init (void)
 {
-  struct cache_block *cb;
+  list_init(&filesys_cache);
+  lock_init(&filesys_cache_lock);
+  filesys_cache_size = 0;
+  thread_create("filesys_cache_writeback", 0, thread_func_write_back, NULL);
+}
+
+struct cache_entry *block_in_cache (block_sector_t sector)
+{
+  struct cache_entry *c;
   struct list_elem *e;
-  for (e = list_begin(&cache_list); e != list_end(&cache_list);
+  for (e = list_begin(&filesys_cache); e != list_end(&filesys_cache);
        e = list_next(e))
   {
-    cb = list_entry(e, struct cache_block, elem);
-    if ( cb->sector_no == sector)
-      return cb;
+    c = list_entry(e, struct cache_entry, elem);
+    if (c->sector == sector)
+    {
+      return c;
+    }
   }
   return NULL;
 }
 
-void cache_init()
+struct cache_entry *filesys_cache_block_get (block_sector_t sector,
+    bool dirty)
 {
-  list_init(&cache_list);
-  thread_create("periodical_write_back", PRI_DEFAULT, periodical_write_back, NULL);
+  lock_acquire(&filesys_cache_lock);
+  struct cache_entry *c = block_in_cache(sector);
+  if (c)
+  {
+    c->open_cnt++;
+    c->dirty |= dirty;
+    c->accessed = true;
+    lock_release(&filesys_cache_lock);
+    return c;
+  }
+  c = filesys_cache_block_evict(sector, dirty);
+  if (!c)
+  {
+    PANIC("Not enough memory for buffer cache.");
+  }
+  lock_release(&filesys_cache_lock);
+  return c;
 }
 
-struct cache_block *
-cache_get(block_sector_t sector, bool dirty)
+struct cache_entry *filesys_cache_block_evict (block_sector_t sector,
+    bool dirty)
 {
-  struct cache_block *cb = in_cache(sector);
-  if (cb)
+  struct cache_entry *c;
+  if (filesys_cache_size < MAX_FILESYS_CACHE_SIZE)
   {
-    cb->access = true;
-    cb->dirty |= dirty;
-  }
-  else
-  {
-    cb = cache_new();
-    cb->sector_no = sector;
-    cb->access = true;
-    cb->dirty = dirty;
-    block_read(fs_device, cb->sector_no, &cb->data);
-  }
-  return cb;
-}
-
-
-struct cache_block *
-cache_new()
-{
-  struct cache_block *cb;
-  if (list_size(&cache_list) < CACHE_SIZE)
-  {
-    cb = malloc(sizeof(struct cache_block));
-    // if(!cb)
-    //   PANIC ("No enough memory for cache!";
-    list_push_back(&cache_list, &cb->elem);
-  }
-  else
-  {
-    cb = cache_evict();
-  }
-  return cb;
-}
-
-struct cache_block *
-cache_evict()
-{
-  lock_acquire(&evict_lock);
-  struct cache_block *cb;
-  bool loop = true;
-  while (loop)
-  {
-    struct list_elem *e;
-    for (e = list_begin(&cache_list); e != list_end(&cache_list);
-         e = list_next(e))
+    filesys_cache_size++;
+    c = malloc(sizeof(struct cache_entry));
+    if (!c)
     {
-      cb = list_entry(e, struct cache_block, elem);
-
-      if (cb->access)
+      return NULL;
+    }
+    c->open_cnt = 0;
+    list_push_back(&filesys_cache, &c->elem);
+  }
+  else
+  {
+    bool loop = true;
+    while (loop)
+    {
+      struct list_elem *e;
+      for (e = list_begin(&filesys_cache); e != list_end(&filesys_cache);
+           e = list_next(e))
       {
-        cb->access = false;
-      }
-      else
-      {
-        if (cb->dirty)
+        c = list_entry(e, struct cache_entry, elem);
+        if (c->open_cnt > 0)
         {
-          block_write(fs_device, cb->sector_no, &cb->data);
+          continue;
         }
-        lock_release(&evict_lock);
-        return cb;
+        if (c->accessed)
+        {
+          c->accessed = false;
+        }
+        else
+        {
+          if (c->dirty)
+          {
+            block_write(fs_device, c->sector, &c->block);
+          }
+          loop = false;
+          break;
+        }
       }
     }
   }
+  c->open_cnt++;
+  c->sector = sector;
+  block_read(fs_device, c->sector, &c->block);
+  c->dirty = dirty;
+  c->accessed = true;
+  return c;
 }
 
+void filesys_cache_write_to_disk (bool halt)
+{
+  lock_acquire(&filesys_cache_lock);
+  struct list_elem *next, *e = list_begin(&filesys_cache);
+  while (e != list_end(&filesys_cache))
+  {
+    next = list_next(e);
+    struct cache_entry *c = list_entry(e, struct cache_entry, elem);
+    if (c->dirty)
+    {
+      block_write (fs_device, c->sector, &c->block);
+      c->dirty = false;
+    }
+    if (halt)
+    {
+      list_remove(&c->elem);
+      free(c);
+    }
+    e = next;
+  }
+  lock_release(&filesys_cache_lock);
+}
 
-void 
-periodical_write_back (void *aux UNUSED)
+void thread_func_write_back (void *aux UNUSED)
 {
   while (true)
   {
     timer_sleep(WRITE_BACK_INTERVAL);
-    cache_write_to_disk(false);
+    filesys_cache_write_to_disk(false);
   }
 }
 
-void 
-cache_write_to_disk(bool done)
+void spawn_thread_read_ahead (block_sector_t sector)
 {
-  struct list_elem *next, *e;
-  struct cache_block *cb;
-  for (e = list_begin(&cache_list); e != list_end(&cache_list);)
+  block_sector_t *arg = malloc(sizeof(block_sector_t));
+  if (arg)
   {
-    next = list_next(e);
-    cb = list_entry(e, struct cache_block, elem);
-
-    if (cb->dirty)
-    {
-      block_write(fs_device, cb->sector_no, &cb->data);
-      cb->dirty = false;
-    }
-    if(done)
-    {
-      list_remove(&cb->elem);
-      free(cb);
-    }
-    e = next;
+    *arg = sector + 1;
+    thread_create("filesys_cache_readahead", 0, thread_func_read_ahead,
+                  arg);
   }
 }
 
-
-void
-cache_read_ahead(block_sector_t sector)
-{
-  block_sector_t *aux = malloc(sizeof(block_sector_t));
-  // if (!arg)
-  //   PANIC("No enough memory for arg of read_ahead!");
-  
-  *aux = sector + 1;
-  thread_create("cache_read_ahead", PRI_DEFAULT, func_read_ahead,
-                aux);
-}
-
-void 
-func_read_ahead (void *aux)
+void thread_func_read_ahead (void *aux)
 {
   block_sector_t sector = * (block_sector_t *) aux;
-  cache_get(sector, false);
+  lock_acquire(&filesys_cache_lock);
+  struct cache_entry *c = block_in_cache(sector);
+  if (!c)
+  {
+    filesys_cache_block_evict(sector, false);
+  }
+  lock_release(&filesys_cache_lock);
   free(aux);
 }
-

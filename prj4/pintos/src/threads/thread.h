@@ -125,6 +125,7 @@ struct thread
     struct list fds;                    /* List of file descriptors. */
     int next_handle;                    /* Next handle value. */
 
+    struct dir *cwd;
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
@@ -142,6 +143,7 @@ struct wait_status
     tid_t tid;                          /* Child thread id. */
     int exit_code;                      /* Child exit code, if dead. */
     struct semaphore dead;              /* 1=child alive, 0=child dead. */
+
   };
 
 /* If false (default), use round-robin scheduler.
