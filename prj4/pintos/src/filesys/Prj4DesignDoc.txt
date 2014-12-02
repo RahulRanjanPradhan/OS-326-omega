@@ -35,17 +35,86 @@ http://courses.cs.vt.edu/cs3204/spring2007/pintos/Project4SessionSpring2007.pdf
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
 
+/*
+ # of direct blocks           = 4
+ # of indirect blocks         = 9
+ # of double indirect blocks  = 1
+ */
+#define DIRECT_BLOCKS 4
+#define INDIRECT_BLOCKS 9
+#define DOUBLE_INDIRECT_BLOCKS 1
+
+/*
+  Starting index of direct block = 0
+  Starting index of indirect block = 4
+  Starting index of double indirect block = 13
+*/
+#define DIRECT_INDEX 0
+#define INDIRECT_INDEX 4
+#define DOUBLE_INDIRECT_INDEX 13
+
+#define INDIRECT_BLOCK_PTRS 128
+#define INODE_BLOCK_PTRS 14
+
+/*
+  4*512 + 9*128*512 + 1*128*128*512 = 8980480 Bytes = 8.56 MB
+  8 MB file size limit
+*/
+
+#define MAX_FILE_SIZE 8980480
+
+/* On-disk inode.
+   Must be exactly BLOCK_SECTOR_SIZE bytes long. */
+struct inode_disk
+{
+  off_t length;                       /* File size in bytes. */
+  unsigned magic;                     /* Magic number. */
+  uint32_t direct_index;
+  uint32_t indirect_index;
+  uint32_t double_indirect_index;
+  bool isdir;
+  block_sector_t parent;
+  uint32_t unused[107];                     /* Not used. */
+  block_sector_t ptr[INODE_BLOCK_PTRS];     /* Pointers to blocks */
+};
+
+struct indirect_block
+{
+  block_sector_t ptr[INDIRECT_BLOCK_PTRS];
+};
+
+/* In-memory inode. */
+struct inode
+{
+  struct list_elem elem;              /* Element in inode list. */
+  block_sector_t sector;              /* Sector number of disk location. */
+  int open_cnt;                       /* Number of openers. */
+  bool removed;                       /* True if deleted, false otherwise. */
+  int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
+  off_t length;                       /* File size in bytes. */
+  off_t read_length;
+  size_t direct_index;
+  size_t indirect_index;
+  size_t double_indirect_index;
+  bool isdir;
+  block_sector_t parent;
+  struct lock lock;
+  block_sector_t ptr[INODE_BLOCK_PTRS];  /* Pointers to blocks */
+};
 
 >> A2: What is the maximum size of a file supported by your inode
 >> structure?  Show your work.
 
-(9*512 + 4*128*512 + 128*128*512)/1024/1024 = 8.25 MB
+4*512 + 9*128*512 + 1*128*128*512 = 8980480 Bytes = 8.56 MB
 
 
 ---- SYNCHRONIZATION ----
 
 >> A3: Explain how your code avoids a race if two processes attempt to
 >> extend a file at the same time.
+
+    For every inode, we set a lock. Before the process attempt to extend a file,
+    it must acquire the lock first.
 
 >> A4: Suppose processes A and B both have file F open, both
 >> positioned at end-of-file.  If A reads and B writes F at the same
@@ -54,12 +123,18 @@ http://courses.cs.vt.edu/cs3204/spring2007/pintos/Project4SessionSpring2007.pdf
 >> nonzero data, A is not allowed to see all zeros.  Explain how your
 >> code avoids this race.
 
+    Not dealing with this race.
+
 >> A5: Explain how your synchronization design provides "fairness".
 >> File access is "fair" if readers cannot indefinitely block writers
 >> or vice versa.  That is, many processes reading from a file cannot
 >> prevent forever another process from writing the file, and many
 >> processes writing to a file cannot prevent another process forever
 >> from reading the file.
+
+    Support multiple reading and writing at the same time.
+    Only if two writer are expanding at the same time, 
+    one may block another.
 
 ---- RATIONALE ----
 
@@ -69,7 +144,12 @@ http://courses.cs.vt.edu/cs3204/spring2007/pintos/Project4SessionSpring2007.pdf
 >> structure, and what advantages and disadvantages does your
 >> structure have, compared to a multilevel index?
 
-Yes. My inode structure has three levels: direct 
+Yes. 
+Use a combined scheme:
+    Direct block
+    Indirect block
+    Double indirect block
+
 
                 SUBDIRECTORIES
                 ==============
@@ -79,6 +159,8 @@ Yes. My inode structure has three levels: direct
 >> B1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+
+
 
 ---- ALGORITHMS ----
 
@@ -111,14 +193,46 @@ Yes. My inode structure has three levels: direct
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+#define CACHE_SIZE 64                       // 64 cache sector
+/*  
+    TIMER_FREQ = 100
+    1 tick =  1 / TIMER_FREQ (s) = 0.01 s
+    Every 20s, write all dirty cache blocks to disk.
+*/
+#define WRITE_BACK_INTERVAL 2000 * TIMER_FREQ   
+struct cache_block
+{
+  block_sector_t sector_no;         // Sector number
+
+  // Used in second chance algorithm
+  bool access;                      // If access
+  bool dirty;                       // If written or not
+
+  char data[BLOCK_SECTOR_SIZE];     // Cache data
+  struct list_elem elem;            // Inserted in cache_list
+};
+
 ---- ALGORITHMS ----
 
 >> C2: Describe how your cache replacement algorithm chooses a cache
 >> block to evict.
 
+    Second chance algorithm.
+        1. Iterator the list. 
+        2. If the cache block is accessed, set the accessed to false.
+           Otherwise, evict this cache block. 
+            If the cache block is modified(dirty)
+            Write back this block
+
 >> C3: Describe your implementation of write-behind.
+    Create a background thread to do write-behind.
+        Every 20s, write all dirty cache blocks to disk. 
 
 >> C4: Describe your implementation of read-ahead.
+    Not implemented yet.
+    Encounter a bug : 
+        Kernel panic in run: PANIC at ../../filesys/cache.c:151 
+        in cache_read_ahead(): No enough memory for aux of read_ahead!
 
 ---- SYNCHRONIZATION ----
 
@@ -126,9 +240,13 @@ Yes. My inode structure has three levels: direct
 >> buffer cache block, how are other processes prevented from evicting
 >> that block?
 
+    Not implemented.
+
 >> C6: During the eviction of a block from the cache, how are other
 >> processes prevented from attempting to access the block?
-
+    
+    Not implemented.
+    
 ---- RATIONALE ----
 
 >> C7: Describe a file workload likely to benefit from buffer caching,

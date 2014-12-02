@@ -4,8 +4,8 @@
 #include "threads/thread.h"
 
 
-struct list cache_list;
-struct lock evict_lock;
+static struct list cache_list;
+static struct lock evict_lock;
 
 // If this sector is in cache.
 struct cache_block *
