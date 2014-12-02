@@ -149,7 +149,7 @@ Use a combined scheme:
     Direct block
     Indirect block
     Double indirect block
-
+Because it avoids external fragmentation.
 
                 SUBDIRECTORIES
                 ==============
@@ -160,12 +160,35 @@ Use a combined scheme:
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+/* A file descriptor(including file and directory),
+ for binding a file handle to a file. */
+struct file_descriptor
+{
+  struct list_elem elem;      /* List element. */
+  struct file *file;          /* File. */
+  struct dir *dir;            /* Dir. */
+  bool isdir;                 /* Isdir true or false. */
+  int handle;                 /* File handle. */
+};
 
 
 ---- ALGORITHMS ----
 
 >> B2: Describe your code for traversing a user-specified path.  How
 >> do traversals of absolute and relative paths differ?
+
+Use a method in directory.c named get_containing_dir to traversing a path.
+For the absolute path, check if the path begin with ’/’ or it has not current 
+working directory, then open it as root. Otherwise, open the path as relative
+paths.
+
+Then we go through the tokens. If the token is ‘..’, then the directory is parent.
+If the token is ‘.’, then the directory remains the same. If a token is an ordinary name, then looked up the name in the directory. If the name exists and is a directory,
+this becomes the tracked directory and continue the search. If the name exists 
+and is a file, then it must be the last token in the path. Otherwise, the path is invalid
+(except for create, which in this case is valid).
+
+
 
 ---- SYNCHRONIZATION ----
 
@@ -174,15 +197,24 @@ Use a combined scheme:
 >> should succeed, as should only one of two simultaneous attempts to
 >> create a file with the same name, and so on.
 
+Because we have lock for directory’s indode. Thus, adding or removing from a 
+directory requires the inode lock. Therefore, a file can only be removed and 
+created once.
+
 >> B5: Does your implementation allow a directory to be removed if it
 >> is open by a process or if it is in use as a process's current
 >> working directory?  If so, what happens to that process's future
 >> file system operations?  If not, how do you prevent it?
 
+No, if other process is using a directory, it cannot be removed. Because using
+directory makes inode’s open count bigger than 1.
+
 ---- RATIONALE ----
 
 >> B6: Explain why you chose to represent the current directory of a
 >> process the way you did.
+We are using struct dir* to represent the current directory of a process instead
+of indode. Struct dir* is much easier to open and close directories.
 
                  BUFFER CACHE
                  ============
@@ -247,10 +279,6 @@ struct cache_block
     
     Not implemented.
     
----- RATIONALE ----
-
->> C7: Describe a file workload likely to benefit from buffer caching,
->> and workloads likely to benefit from read-ahead and write-behind.
 
 
 
