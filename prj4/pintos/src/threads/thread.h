@@ -128,6 +128,7 @@ struct thread
     struct dir *cwd;
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+
   };
 
 /* Tracks the completion of a process.

@@ -346,11 +346,10 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
     if (chunk_size <= 0)
       break;
 
-    struct cache_entry *c = filesys_cache_block_get(sector_idx, false);
-    memcpy (buffer + bytes_read, (uint8_t *) &c->block + sector_ofs,
+    struct cache_block *c = cache_get(sector_idx, false);
+    memcpy (buffer + bytes_read, (uint8_t *) &c->data + sector_ofs,
             chunk_size);
-    c->accessed = true;
-    c->open_cnt--;
+    
 
     /* Advance. */
     size -= chunk_size;
@@ -407,12 +406,10 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
     if (chunk_size <= 0)
       break;
 
-    struct cache_entry *c = filesys_cache_block_get(sector_idx, true);
-    memcpy ((uint8_t *) &c->block + sector_ofs, buffer + bytes_written,
+    struct cache_block *c = cache_get(sector_idx, true);
+    memcpy ((uint8_t *) &c->data + sector_ofs, buffer + bytes_written,
             chunk_size);
-    c->accessed = true;
-    c->dirty = true;
-    c->open_cnt--;
+
 
     /* Advance. */
     size -= chunk_size;

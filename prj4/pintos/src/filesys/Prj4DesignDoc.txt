@@ -1,0 +1,260 @@
+             +-------------------------+
+             |      CS 140             |
+             | PROJECT 4: FILE SYSTEMS |
+             |     DESIGN DOCUMENT     |
+             +-------------------------+
+
+---- GROUP ----
+
+>> Fill in the names and email addresses of your group members.
+
+Wei Fang  <wfang2@dons.usfca.edu>
+Yi Xu     <yxu66@dons.usfca.edu>
+Jie Gao   <jgao11@dons.usfca.edu>
+
+
+---- PRELIMINARIES ----
+
+>> If you have any preliminary comments on your submission, notes for the
+>> TAs, or extra credit, please give them here.
+
+>> Please cite any offline or online sources you consulted while
+>> preparing your submission, other than the Pintos documentation, course
+>> text, lecture notes, and course staff.
+
+http://courses.cs.vt.edu/cs3204/spring2007/pintos/Project4SessionSpring2007.pdf
+
+
+             INDEXED AND EXTENSIBLE FILES
+             ============================
+
+---- DATA STRUCTURES ----
+
+>> A1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+
+
+>> A2: What is the maximum size of a file supported by your inode
+>> structure?  Show your work.
+
+---- SYNCHRONIZATION ----
+
+>> A3: Explain how your code avoids a race if two processes attempt to
+>> extend a file at the same time.
+
+>> A4: Suppose processes A and B both have file F open, both
+>> positioned at end-of-file.  If A reads and B writes F at the same
+>> time, A may read all, part, or none of what B writes.  However, A
+>> may not read data other than what B writes, e.g. if B writes
+>> nonzero data, A is not allowed to see all zeros.  Explain how your
+>> code avoids this race.
+
+>> A5: Explain how your synchronization design provides "fairness".
+>> File access is "fair" if readers cannot indefinitely block writers
+>> or vice versa.  That is, many processes reading from a file cannot
+>> prevent forever another process from writing the file, and many
+>> processes writing to a file cannot prevent another process forever
+>> from reading the file.
+
+---- RATIONALE ----
+
+>> A6: Is your inode structure a multilevel index?  If so, why did you
+>> choose this particular combination of direct, indirect, and doubly
+>> indirect blocks?  If not, why did you choose an alternative inode
+>> structure, and what advantages and disadvantages does your
+>> structure have, compared to a multilevel index?
+
+Yes. My inode structure has three levels: direct 
+
+                SUBDIRECTORIES
+                ==============
+
+---- DATA STRUCTURES ----
+
+>> B1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+---- ALGORITHMS ----
+
+>> B2: Describe your code for traversing a user-specified path.  How
+>> do traversals of absolute and relative paths differ?
+
+---- SYNCHRONIZATION ----
+
+>> B4: How do you prevent races on directory entries?  For example,
+>> only one of two simultaneous attempts to remove a single file
+>> should succeed, as should only one of two simultaneous attempts to
+>> create a file with the same name, and so on.
+
+>> B5: Does your implementation allow a directory to be removed if it
+>> is open by a process or if it is in use as a process's current
+>> working directory?  If so, what happens to that process's future
+>> file system operations?  If not, how do you prevent it?
+
+---- RATIONALE ----
+
+>> B6: Explain why you chose to represent the current directory of a
+>> process the way you did.
+
+                 BUFFER CACHE
+                 ============
+
+---- DATA STRUCTURES ----
+
+>> C1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+---- ALGORITHMS ----
+
+>> C2: Describe how your cache replacement algorithm chooses a cache
+>> block to evict.
+
+>> C3: Describe your implementation of write-behind.
+
+>> C4: Describe your implementation of read-ahead.
+
+---- SYNCHRONIZATION ----
+
+>> C5: When one process is actively reading or writing data in a
+>> buffer cache block, how are other processes prevented from evicting
+>> that block?
+
+>> C6: During the eviction of a block from the cache, how are other
+>> processes prevented from attempting to access the block?
+
+---- RATIONALE ----
+
+>> C7: Describe a file workload likely to benefit from buffer caching,
+>> and workloads likely to benefit from read-ahead and write-behind.
+
+
+
+                 RESULT
+                 ======
+                 
+pass tests/userprog/args-none
+pass tests/userprog/args-single
+pass tests/userprog/args-multiple
+pass tests/userprog/args-many
+pass tests/userprog/args-dbl-space
+pass tests/userprog/sc-bad-sp
+pass tests/userprog/sc-bad-arg
+pass tests/userprog/sc-boundary
+pass tests/userprog/sc-boundary-2
+pass tests/userprog/halt
+pass tests/userprog/exit
+pass tests/userprog/create-normal
+pass tests/userprog/create-empty
+pass tests/userprog/create-null
+pass tests/userprog/create-bad-ptr
+pass tests/userprog/create-long
+pass tests/userprog/create-exists
+pass tests/userprog/create-bound
+pass tests/userprog/open-normal
+pass tests/userprog/open-missing
+pass tests/userprog/open-boundary
+pass tests/userprog/open-empty
+pass tests/userprog/open-null
+pass tests/userprog/open-bad-ptr
+pass tests/userprog/open-twice
+pass tests/userprog/close-normal
+pass tests/userprog/close-twice
+pass tests/userprog/close-stdin
+pass tests/userprog/close-stdout
+pass tests/userprog/close-bad-fd
+pass tests/userprog/read-normal
+pass tests/userprog/read-bad-ptr
+pass tests/userprog/read-boundary
+pass tests/userprog/read-zero
+pass tests/userprog/read-stdout
+pass tests/userprog/read-bad-fd
+pass tests/userprog/write-normal
+pass tests/userprog/write-bad-ptr
+pass tests/userprog/write-boundary
+pass tests/userprog/write-zero
+pass tests/userprog/write-stdin
+pass tests/userprog/write-bad-fd
+pass tests/userprog/exec-once
+pass tests/userprog/exec-arg
+pass tests/userprog/exec-multiple
+pass tests/userprog/exec-missing
+pass tests/userprog/exec-bad-ptr
+pass tests/userprog/wait-simple
+pass tests/userprog/wait-twice
+pass tests/userprog/wait-killed
+pass tests/userprog/wait-bad-pid
+pass tests/userprog/multi-recurse
+pass tests/userprog/multi-child-fd
+pass tests/userprog/rox-simple
+pass tests/userprog/rox-child
+pass tests/userprog/rox-multichild
+pass tests/userprog/bad-read
+pass tests/userprog/bad-write
+pass tests/userprog/bad-read2
+pass tests/userprog/bad-write2
+pass tests/userprog/bad-jump
+pass tests/userprog/bad-jump2
+pass tests/filesys/base/lg-create
+pass tests/filesys/base/lg-full
+pass tests/filesys/base/lg-random
+pass tests/filesys/base/lg-seq-block
+pass tests/filesys/base/lg-seq-random
+pass tests/filesys/base/sm-create
+pass tests/filesys/base/sm-full
+pass tests/filesys/base/sm-random
+pass tests/filesys/base/sm-seq-block
+pass tests/filesys/base/sm-seq-random
+pass tests/filesys/base/syn-read
+pass tests/filesys/base/syn-remove
+pass tests/filesys/base/syn-write
+pass tests/filesys/extended/dir-empty-name
+pass tests/filesys/extended/dir-mk-tree
+pass tests/filesys/extended/dir-mkdir
+pass tests/filesys/extended/dir-open
+pass tests/filesys/extended/dir-over-file
+pass tests/filesys/extended/dir-rm-cwd
+pass tests/filesys/extended/dir-rm-parent
+pass tests/filesys/extended/dir-rm-root
+pass tests/filesys/extended/dir-rm-tree
+pass tests/filesys/extended/dir-rmdir
+pass tests/filesys/extended/dir-under-file
+FAIL tests/filesys/extended/dir-vine
+pass tests/filesys/extended/grow-create
+pass tests/filesys/extended/grow-dir-lg
+pass tests/filesys/extended/grow-file-size
+pass tests/filesys/extended/grow-root-lg
+pass tests/filesys/extended/grow-root-sm
+pass tests/filesys/extended/grow-seq-lg
+pass tests/filesys/extended/grow-seq-sm
+pass tests/filesys/extended/grow-sparse
+pass tests/filesys/extended/grow-tell
+pass tests/filesys/extended/grow-two-files
+pass tests/filesys/extended/syn-rw
+pass tests/filesys/extended/dir-empty-name-persistence
+FAIL tests/filesys/extended/dir-mk-tree-persistence
+FAIL tests/filesys/extended/dir-mkdir-persistence
+FAIL tests/filesys/extended/dir-open-persistence
+FAIL tests/filesys/extended/dir-over-file-persistence
+FAIL tests/filesys/extended/dir-rm-cwd-persistence
+FAIL tests/filesys/extended/dir-rm-parent-persistence
+pass tests/filesys/extended/dir-rm-root-persistence
+pass tests/filesys/extended/dir-rm-tree-persistence
+pass tests/filesys/extended/dir-rmdir-persistence
+pass tests/filesys/extended/dir-under-file-persistence
+FAIL tests/filesys/extended/dir-vine-persistence
+pass tests/filesys/extended/grow-create-persistence
+FAIL tests/filesys/extended/grow-dir-lg-persistence
+pass tests/filesys/extended/grow-file-size-persistence
+pass tests/filesys/extended/grow-root-lg-persistence
+pass tests/filesys/extended/grow-root-sm-persistence
+pass tests/filesys/extended/grow-seq-lg-persistence
+pass tests/filesys/extended/grow-seq-sm-persistence
+pass tests/filesys/extended/grow-sparse-persistence
+pass tests/filesys/extended/grow-tell-persistence
+pass tests/filesys/extended/grow-two-files-persistence
+pass tests/filesys/extended/syn-rw-persistence
+9 of 121 tests failed.
