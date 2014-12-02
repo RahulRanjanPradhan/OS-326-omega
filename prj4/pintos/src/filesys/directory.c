@@ -6,7 +6,7 @@
 #include "filesys/inode.h"
 #include "threads/malloc.h"
 
-bool dir_is_empty (struct inode *inode);
+
 
 /* A directory. */
 struct dir 
@@ -162,7 +162,7 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
     goto done;
 
   if (!inode_add_parent(inode_get_inumber(dir_get_inode(dir)),
-			inode_sector))
+      inode_sector))
     {
       goto done;
     }
@@ -251,7 +251,7 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
       if (e.in_use)
         {
           strlcpy (name, e.name, NAME_MAX + 1);
-	  inode_unlock(dir_get_inode(dir));
+    inode_unlock(dir_get_inode(dir));
           return true;
         } 
     }
@@ -259,6 +259,7 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
   return false;
 }
 
+/* Given an inode, test if it is an empty directory.*/
 bool dir_is_empty (struct inode *inode)
 {
   struct dir_entry e;
@@ -275,6 +276,7 @@ bool dir_is_empty (struct inode *inode)
   return true;
 }
 
+/* Given a directory, test if it is root. */
 bool dir_is_root (struct dir* dir)
 {
   if (!dir)
@@ -288,9 +290,9 @@ bool dir_is_root (struct dir* dir)
   return false;
 }
 
+/* Given directory, test if it's parent exists. */
 bool dir_get_parent (struct dir* dir, struct inode **inode)
 {
-
   block_sector_t sector = inode_get_parent(dir_get_inode(dir));
   *inode = inode_open (sector);
   return *inode != NULL;

@@ -88,7 +88,7 @@ syscall_handler (struct intr_frame *f)
     {1, (syscall_function *) sys_mkdir},
     {2, (syscall_function *) sys_readdir},
     {1, (syscall_function *) sys_isdir},
-    {1, (syscall_function *) sys_inumber},
+    {1, (syscall_function *) sys_inumber},  // New func
   };
 
   const struct syscall *sc;
@@ -236,6 +236,7 @@ sys_create (const char *ufile, unsigned initial_size)
   bool ok;
 
   lock_acquire (&fs_lock);
+  // Use modifed version
   ok = filesys_create (kfile, initial_size, false);
   lock_release (&fs_lock);
 
@@ -252,6 +253,7 @@ sys_remove (const char *ufile)
   bool ok;
 
   lock_acquire (&fs_lock);
+  // Use modifed version
   ok = filesys_remove (kfile);
   lock_release (&fs_lock);
 
@@ -260,7 +262,8 @@ sys_remove (const char *ufile)
   return ok;
 }
 
-/* A file descriptor, for binding a file handle to a file. */
+/* A file descriptor(including file and directory),
+ for binding a file handle to a file. */
 struct file_descriptor
 {
   struct list_elem elem;      /* List element. */
@@ -282,11 +285,13 @@ sys_open (const char *ufile)
   if (fd != NULL)
   {
     lock_acquire (&fs_lock);
+  // Use modifed version
     struct file *f = filesys_open (kfile);
     if (f != NULL)
     {
       struct thread *cur = thread_current ();
       handle = fd->handle = cur->next_handle++;
+    // Make judgement about f: file or dir
       if(inode_is_dir(file_get_inode(f)))
       {
         fd->dir = (struct dir*) f;
@@ -339,6 +344,7 @@ sys_filesize (int handle)
   {
     thread_exit();
   }
+  // Make judgement about file: normal file or dir
   if (fd->isdir)
   {
     thread_exit();
@@ -376,6 +382,7 @@ sys_read (int handle, void *udst_, unsigned size)
   {
     thread_exit();
   }
+  // Make judgement about file: normal file or dir
   if (fd->isdir)
   {
     thread_exit();
@@ -435,6 +442,7 @@ sys_write (int handle, void *usrc_, unsigned size)
     {
       thread_exit();
     }
+  // Make judgement about file: normal file or dir
     if (fd->isdir)
     {
       thread_exit();
@@ -494,6 +502,7 @@ sys_seek (int handle, unsigned position)
   {
     thread_exit();
   }
+  // Make judgement about file: normal file or dir
   if (fd->isdir)
   {
     thread_exit();
@@ -516,6 +525,7 @@ sys_tell (int handle)
   {
     thread_exit();
   }
+  // Make judgement about file: normal file or dir
   if (fd->isdir)
   {
     thread_exit();
@@ -570,11 +580,12 @@ static int
 sys_mkdir(const char *dir)
 {
   bool ok;
+  // Using modified version filesys_create.
   ok = filesys_create(dir, 0, true);
   return ok;
 }
 
-// Read directory like nomal file, but cannot write.
+// Read directory like nomal file.
 // file struct add dir??
 static int
 sys_readdir(int handle, char *name)
